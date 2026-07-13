@@ -25,6 +25,10 @@ public class DataConcentrator
     // the new value. Anyone interested (like the UI) can subscribe.
     public event Action<string, double>? ValueChanged;
 
+    // Raised when an alarm first becomes Active (newly triggered). Carries the
+    // tag name and the alarm that fired.
+    public event Action<string, Alarm>? AlarmRaised;
+
     // Read the current value at an I/O address, by asking the PLC.
     public double ReadValue(int address)
     {
@@ -137,6 +141,7 @@ public class DataConcentrator
     private void ScanOnce()
     {
         List<string> changed = new();
+        List<(string TagName, Alarm Alarm)> raised = new();
 
         lock (_lock)
         {
@@ -154,6 +159,7 @@ public class DataConcentrator
                     {
                         _currentValues[tag.Name] = newValue;
                         changed.Add(tag.Name);
+                        CheckAlarms(tag, newValue, raised);
                     }
                 }
             }
@@ -164,6 +170,51 @@ public class DataConcentrator
         foreach (string name in changed)
         {
             ValueChanged?.Invoke(name, GetCurrentValue(name));
+        }
+
+        foreach (var item in raised)
+        {
+            AlarmRaised?.Invoke(item.TagName, item.Alarm);
+        }
+    }
+
+    // Evaluate every alarm on an AI tag against its new value, applying the
+    // latching state machine. Any alarm that becomes newly Active is added to
+    // 'raised' so it can be announced after the lock is released.
+    // NOTE: this runs while _lock is held (called from inside ScanOnce).
+    private void CheckAlarms(Tag tag, double value, List<(string TagName, Alarm Alarm)> raised)
+    {
+        if (tag.Type != TagType.AI)
+        {
+            return;
+        }
+
+        foreach (Alarm alarm in tag.Alarms)
+        {
+            bool inZone;
+            if (alarm.Direction == AlarmDirection.Above)
+            {
+                inZone = value > alarm.Threshold;
+            }
+            else
+            {
+                inZone = value < alarm.Threshold;
+            }
+
+            if (alarm.State == AlarmState.Inactive && inZone)
+            {
+                // Just entered the alarm zone: raise it.
+                alarm.State = AlarmState.Active;
+                raised.Add((tag.Name, alarm));
+            }
+            else if (alarm.State == AlarmState.Acknowledged && !inZone)
+            {
+                // An acknowledged alarm whose value returned to normal: clear it.
+                alarm.State = AlarmState.Inactive;
+            }
+
+            // If the alarm is Active, it stays Active no matter what the value
+            // does - that is the latch. It only clears once a human acknowledges.
         }
     }
 }
