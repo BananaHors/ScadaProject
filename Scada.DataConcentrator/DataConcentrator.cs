@@ -103,6 +103,45 @@ public class DataConcentrator
         return errors;
     }
 
+    // Acknowledge all Active alarms on a tag (an operator action). An alarm
+    // that is still in its zone becomes Acknowledged (yellow); one whose value
+    // has already returned to normal is cleared to Inactive.
+    public void Acknowledge(string tagName)
+    {
+        lock (_lock)
+        {
+            Tag? tag = _tags.FirstOrDefault(existing => existing.Name == tagName);
+
+            if (tag == null)
+            {
+                return;
+            }
+
+            double value = 0.0;
+            if (_currentValues.ContainsKey(tagName))
+            {
+                value = _currentValues[tagName];
+            }
+
+            foreach (Alarm alarm in tag.Alarms)
+            {
+                if (alarm.State != AlarmState.Active)
+                {
+                    continue;
+                }
+
+                if (IsInZone(alarm, value))
+                {
+                    alarm.State = AlarmState.Acknowledged; // still bad -> yellow
+                }
+                else
+                {
+                    alarm.State = AlarmState.Inactive; // latched but recovered -> clear
+                }
+            }
+        }
+    }
+
     // Get the most recently scanned value for a tag. Returns 0 if we have not
     // scanned a value for that tag yet.
     public double GetCurrentValue(string tagName)
@@ -191,15 +230,7 @@ public class DataConcentrator
 
         foreach (Alarm alarm in tag.Alarms)
         {
-            bool inZone;
-            if (alarm.Direction == AlarmDirection.Above)
-            {
-                inZone = value > alarm.Threshold;
-            }
-            else
-            {
-                inZone = value < alarm.Threshold;
-            }
+            bool inZone = IsInZone(alarm, value);
 
             if (alarm.State == AlarmState.Inactive && inZone)
             {
@@ -216,5 +247,16 @@ public class DataConcentrator
             // If the alarm is Active, it stays Active no matter what the value
             // does - that is the latch. It only clears once a human acknowledges.
         }
+    }
+
+    // True if the value is past the alarm's threshold in its direction.
+    private bool IsInZone(Alarm alarm, double value)
+    {
+        if (alarm.Direction == AlarmDirection.Above)
+        {
+            return value > alarm.Threshold;
+        }
+
+        return value < alarm.Threshold;
     }
 }
