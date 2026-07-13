@@ -25,4 +25,31 @@ public class Tag
     // --- Analog input only (AI) ---
     public double? Deadband { get; set; }   // how big a change we react to
     public double? Hysteresis { get; set; } // margin for turning alarms on/off
+
+    // Check this tag for problems. Returns an empty list if the tag is valid,
+    // otherwise a list of human-readable reasons why it is not.
+    public List<string> Validate()
+    {
+        List<string> errors = new();
+
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            errors.Add("Tag name is required.");
+        }
+
+        bool isAnalog = Type == TagType.AI || Type == TagType.AO;
+
+        if (!isAnalog && Units != null)
+        {
+            errors.Add("Units can only be set on analog tags (AI/AO).");
+        }
+
+        if (isAnalog && LowLimit.HasValue && HighLimit.HasValue && LowLimit >= HighLimit)
+        {
+            errors.Add("Low limit must be less than high limit.");
+        }
+
+        return errors;
+    }
 }
+
