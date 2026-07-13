@@ -72,6 +72,33 @@ public class DataConcentrator
         }
     }
 
+    // Attach an alarm to an existing AI tag. Returns an empty list on success,
+    // or a list of problems if the alarm was rejected (and NOT attached).
+    public List<string> AddAlarm(string tagName, Alarm alarm)
+    {
+        List<string> errors = new();
+
+        lock (_lock)
+        {
+            Tag? tag = _tags.FirstOrDefault(existing => existing.Name == tagName);
+
+            if (tag == null)
+            {
+                errors.Add($"No tag named '{tagName}' exists.");
+            }
+            else if (tag.Type != TagType.AI)
+            {
+                errors.Add("Alarms can only be added to analog input (AI) tags.");
+            }
+            else
+            {
+                tag.Alarms.Add(alarm);
+            }
+        }
+
+        return errors;
+    }
+
     // Get the most recently scanned value for a tag. Returns 0 if we have not
     // scanned a value for that tag yet.
     public double GetCurrentValue(string tagName)

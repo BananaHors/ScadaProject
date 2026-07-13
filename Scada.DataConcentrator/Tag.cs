@@ -26,6 +26,9 @@ public class Tag
     public double? Deadband { get; set; }   // how big a change we react to
     public double? Hysteresis { get; set; } // margin for turning alarms on/off
 
+    // Alarms attached to this tag (only meaningful for AI tags).
+    public List<Alarm> Alarms { get; set; } = new();
+
     // Check this tag for problems. Returns an empty list if the tag is valid,
     // otherwise a list of human-readable reasons why it is not.
     public List<string> Validate()
