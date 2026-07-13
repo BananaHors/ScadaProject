@@ -10,6 +10,17 @@ public class DataConcentrator
     // All the tags currently defined in the system.
     private readonly List<Tag> _tags = new();
 
+    // The latest scanned value for each tag, keyed by tag name.
+    private readonly Dictionary<string, double> _currentValues = new();
+
+    // Guards _tags and _currentValues - the state shared with the scan thread.
+    private readonly object _lock = new();
+
+    public DataConcentrator()
+    {
+        StartScanning();
+    }
+
     // Read the current value at an I/O address, by asking the PLC.
     public double ReadValue(int address)
     {
@@ -22,15 +33,18 @@ public class DataConcentrator
     {
         List<string> errors = tag.Validate();
 
-        // The name is the tag's id, so it must be unique across all tags.
-        if (_tags.Any(existing => existing.Name == tag.Name))
+        lock (_lock)
         {
-            errors.Add($"A tag named '{tag.Name}' already exists.");
-        }
+            // The name is the tag's id, so it must be unique across all tags.
+            if (_tags.Any(existing => existing.Name == tag.Name))
+            {
+                errors.Add($"A tag named '{tag.Name}' already exists.");
+            }
 
-        if (errors.Count == 0)
-        {
-            _tags.Add(tag);
+            if (errors.Count == 0)
+            {
+                _tags.Add(tag);
+            }
         }
 
         return errors;
@@ -39,14 +53,69 @@ public class DataConcentrator
     // Remove a tag by its name. Returns true if a matching tag was removed.
     public bool RemoveTag(string name)
     {
-        Tag? tag = _tags.FirstOrDefault(existing => existing.Name == name);
-
-        if (tag == null)
+        lock (_lock)
         {
-            return false;
-        }
+            Tag? tag = _tags.FirstOrDefault(existing => existing.Name == name);
 
-        _tags.Remove(tag);
-        return true;
+            if (tag == null)
+            {
+                return false;
+            }
+
+            _tags.Remove(tag);
+            _currentValues.Remove(name);
+            return true;
+        }
+    }
+
+    // Get the most recently scanned value for a tag. Returns 0 if we have not
+    // scanned a value for that tag yet.
+    public double GetCurrentValue(string tagName)
+    {
+        lock (_lock)
+        {
+            if (_currentValues.ContainsKey(tagName))
+            {
+                return _currentValues[tagName];
+            }
+
+            return 0.0;
+        }
+    }
+
+    // Launch a background thread that keeps scanning input tags.
+    private void StartScanning()
+    {
+        Thread thread = new Thread(ScanLoop);
+        thread.IsBackground = true;
+        thread.Start();
+    }
+
+    // Runs forever on the background thread: scan, wait one second, repeat.
+    private void ScanLoop()
+    {
+        while (true)
+        {
+            ScanOnce();
+            Thread.Sleep(1000);
+        }
+    }
+
+    // Read the current PLC value for every input tag that has scanning on.
+    private void ScanOnce()
+    {
+        lock (_lock)
+        {
+            foreach (Tag tag in _tags)
+            {
+                bool isInput = tag.Type == TagType.AI || tag.Type == TagType.DI;
+                bool scanning = tag.OnOffScan == true;
+
+                if (isInput && scanning)
+                {
+                    _currentValues[tag.Name] = _plc.Read(tag.IoAddress);
+                }
+            }
+        }
     }
 }
