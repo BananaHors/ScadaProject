@@ -21,6 +21,10 @@ public class DataConcentrator
         StartScanning();
     }
 
+    // Raised whenever a scanned tag's value changes. Carries the tag name and
+    // the new value. Anyone interested (like the UI) can subscribe.
+    public event Action<string, double>? ValueChanged;
+
     // Read the current value at an I/O address, by asking the PLC.
     public double ReadValue(int address)
     {
@@ -101,9 +105,12 @@ public class DataConcentrator
         }
     }
 
-    // Read the current PLC value for every input tag that has scanning on.
+    // Read the current PLC value for every input tag that has scanning on,
+    // and remember which tags actually changed.
     private void ScanOnce()
     {
+        List<string> changed = new();
+
         lock (_lock)
         {
             foreach (Tag tag in _tags)
@@ -113,9 +120,23 @@ public class DataConcentrator
 
                 if (isInput && scanning)
                 {
-                    _currentValues[tag.Name] = _plc.Read(tag.IoAddress);
+                    double newValue = _plc.Read(tag.IoAddress);
+                    bool isNew = !_currentValues.ContainsKey(tag.Name);
+
+                    if (isNew || _currentValues[tag.Name] != newValue)
+                    {
+                        _currentValues[tag.Name] = newValue;
+                        changed.Add(tag.Name);
+                    }
                 }
             }
+        }
+
+        // Announce changes AFTER releasing the lock, so a subscriber's code
+        // never runs while we are holding it.
+        foreach (string name in changed)
+        {
+            ValueChanged?.Invoke(name, GetCurrentValue(name));
         }
     }
 }
