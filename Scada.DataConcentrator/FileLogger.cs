@@ -11,9 +11,9 @@ public class FileLogger : ILogger
         _filePath = filePath;
     }
 
-    public void Log(string message)
+    public void Log(LogLevel level, string message)
     {
-        string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {message}";
+        string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  [{level}]  {message}";
 
         // Guard the file: several threads may try to log at the same time.
         lock (_lock)
