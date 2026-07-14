@@ -252,6 +252,7 @@ public class DataConcentrator
     {
         List<string> changed = new();
         List<(string TagName, Alarm Alarm)> raised = new();
+        List<(LogLevel Level, string Message)> logs = new();
 
         lock (_lock)
         {
@@ -269,7 +270,7 @@ public class DataConcentrator
                     {
                         _currentValues[tag.Name] = newValue;
                         changed.Add(tag.Name);
-                        CheckAlarms(tag, newValue, raised);
+                        CheckAlarms(tag, newValue, raised, logs);
                     }
                 }
             }
@@ -286,13 +287,21 @@ public class DataConcentrator
         {
             AlarmRaised?.Invoke(item.TagName, item.Alarm);
         }
+
+        // Write any alarm/warning log entries (also outside the lock).
+        foreach (var entry in logs)
+        {
+            _logger.Log(entry.Level, entry.Message);
+        }
     }
 
     // Evaluate every alarm on an AI tag against its new value, applying the
     // latching state machine. Any alarm that becomes newly Active is added to
     // 'raised' so it can be announced after the lock is released.
     // NOTE: this runs while _lock is held (called from inside ScanOnce).
-    private void CheckAlarms(Tag tag, double value, List<(string TagName, Alarm Alarm)> raised)
+    private void CheckAlarms(Tag tag, double value,
+        List<(string TagName, Alarm Alarm)> raised,
+        List<(LogLevel Level, string Message)> logs)
     {
         if (tag.Type != TagType.AI)
         {
@@ -308,6 +317,7 @@ public class DataConcentrator
                 // Just entered the alarm zone: raise it.
                 alarm.State = AlarmState.Active;
                 raised.Add((tag.Name, alarm));
+                logs.Add((LogLevel.Error, $"Alarm active on '{tag.Name}': {alarm.Message}"));
             }
             else if (alarm.State == AlarmState.Acknowledged && !inZone)
             {
@@ -317,7 +327,46 @@ public class DataConcentrator
 
             // If the alarm is Active, it stays Active no matter what the value
             // does - that is the latch. It only clears once a human acknowledges.
+
+            UpdateWarning(tag, alarm, value, inZone, logs);
         }
+    }
+
+    // Log a WARNING once when the value enters an alarm's warning band, and
+    // reset when it leaves so a later approach warns again.
+    private void UpdateWarning(Tag tag, Alarm alarm, double value, bool inZone,
+        List<(LogLevel Level, string Message)> logs)
+    {
+        if (alarm.WarningMargin == null)
+        {
+            return; // no warning configured for this alarm
+        }
+
+        bool inWarningBand = !inZone && IsNearThreshold(alarm, value);
+
+        if (inWarningBand && !alarm.WarningActive)
+        {
+            alarm.WarningActive = true;
+            logs.Add((LogLevel.Warning, $"'{tag.Name}' approaching threshold: {alarm.Message}"));
+        }
+        else if (!inWarningBand)
+        {
+            alarm.WarningActive = false;
+        }
+    }
+
+    // True if the value is within the warning margin of the threshold, on the
+    // approaching side (but not yet in the alarm zone).
+    private bool IsNearThreshold(Alarm alarm, double value)
+    {
+        double margin = alarm.WarningMargin ?? 0.0;
+
+        if (alarm.Direction == AlarmDirection.Above)
+        {
+            return value >= alarm.Threshold - margin && value < alarm.Threshold;
+        }
+
+        return value <= alarm.Threshold + margin && value > alarm.Threshold;
     }
 
     // True if the value is past the alarm's threshold in its direction.
