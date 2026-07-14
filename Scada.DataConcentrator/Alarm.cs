@@ -4,6 +4,9 @@ namespace Scada.DataConcentrator;
 // crosses the threshold in the configured direction.
 public class Alarm
 {
+    // Database primary key. Set automatically by the database.
+    public int Id { get; set; }
+
     public double Threshold { get; set; }
     public AlarmDirection Direction { get; set; }
     public string Message { get; set; } = "";

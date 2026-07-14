@@ -5,6 +5,9 @@ namespace Scada.DataConcentrator;
 // analog-only and input-only properties in the next step.
 public class Tag
 {
+    // Database primary key (a surrogate key). Set automatically by the database.
+    public int Id { get; set; }
+
     public string Name { get; set; } = "";
     public TagType Type { get; set; }
     public string Description { get; set; } = "";
