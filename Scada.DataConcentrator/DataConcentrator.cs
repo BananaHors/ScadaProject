@@ -16,8 +16,12 @@ public class DataConcentrator
     // Guards _tags and _currentValues - the state shared with the scan thread.
     private readonly object _lock = new();
 
-    public DataConcentrator()
+    // Where we record actions and problems. Passed in by whoever creates us.
+    private readonly ILogger _logger;
+
+    public DataConcentrator(ILogger logger)
     {
+        _logger = logger;
         StartScanning();
     }
 
@@ -55,25 +59,41 @@ public class DataConcentrator
             }
         }
 
+        if (errors.Count == 0)
+        {
+            _logger.Log(LogLevel.Info, $"Tag '{tag.Name}' added.");
+        }
+
         return errors;
     }
 
     // Remove a tag by its name. Returns true if a matching tag was removed.
     public bool RemoveTag(string name)
     {
+        bool removed;
+
         lock (_lock)
         {
             Tag? tag = _tags.FirstOrDefault(existing => existing.Name == name);
 
             if (tag == null)
             {
-                return false;
+                removed = false;
             }
-
-            _tags.Remove(tag);
-            _currentValues.Remove(name);
-            return true;
+            else
+            {
+                _tags.Remove(tag);
+                _currentValues.Remove(name);
+                removed = true;
+            }
         }
+
+        if (removed)
+        {
+            _logger.Log(LogLevel.Info, $"Tag '{name}' removed.");
+        }
+
+        return removed;
     }
 
     // Attach an alarm to an existing AI tag. Returns an empty list on success,
@@ -100,6 +120,11 @@ public class DataConcentrator
             }
         }
 
+        if (errors.Count == 0)
+        {
+            _logger.Log(LogLevel.Info, $"Alarm added to '{tagName}'.");
+        }
+
         return errors;
     }
 
@@ -108,6 +133,8 @@ public class DataConcentrator
     // has already returned to normal is cleared to Inactive.
     public void Acknowledge(string tagName)
     {
+        int acknowledged = 0;
+
         lock (_lock)
         {
             Tag? tag = _tags.FirstOrDefault(existing => existing.Name == tagName);
@@ -138,7 +165,14 @@ public class DataConcentrator
                 {
                     alarm.State = AlarmState.Inactive; // latched but recovered -> clear
                 }
+
+                acknowledged++;
             }
+        }
+
+        if (acknowledged > 0)
+        {
+            _logger.Log(LogLevel.Info, $"Acknowledged {acknowledged} alarm(s) on '{tagName}'.");
         }
     }
 
@@ -173,6 +207,7 @@ public class DataConcentrator
         if (written)
         {
             ValueChanged?.Invoke(tagName, value);
+            _logger.Log(LogLevel.Info, $"Wrote {value:F2} to '{tagName}'.");
         }
 
         return errors;
