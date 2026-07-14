@@ -142,6 +142,42 @@ public class DataConcentrator
         }
     }
 
+    // Write a value to an output tag (DO/AO), pushing it down to the PLC.
+    // Returns an empty list on success, or a list of problems otherwise.
+    public List<string> WriteToTag(string tagName, double value)
+    {
+        List<string> errors = new();
+        bool written = false;
+
+        lock (_lock)
+        {
+            Tag? tag = _tags.FirstOrDefault(existing => existing.Name == tagName);
+
+            if (tag == null)
+            {
+                errors.Add($"No tag named '{tagName}' exists.");
+            }
+            else if (tag.Type != TagType.DO && tag.Type != TagType.AO)
+            {
+                errors.Add("Only output tags (DO/AO) can be written.");
+            }
+            else
+            {
+                _plc.Write(tag.IoAddress, value);
+                _currentValues[tag.Name] = value;
+                written = true;
+            }
+        }
+
+        // Let subscribers know the output's value changed (outside the lock).
+        if (written)
+        {
+            ValueChanged?.Invoke(tagName, value);
+        }
+
+        return errors;
+    }
+
     // Get the most recently scanned value for a tag. Returns 0 if we have not
     // scanned a value for that tag yet.
     public double GetCurrentValue(string tagName)
