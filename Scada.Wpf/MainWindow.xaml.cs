@@ -143,6 +143,13 @@ public partial class MainWindow : Window
         RefreshGrid();
     }
 
+    private void FilterButton_Click(object sender, RoutedEventArgs e)
+    {
+        FilterWindow window = new(_dc);
+        window.Owner = this;
+        window.ShowDialog();
+    }
+
     private void UsersButton_Click(object sender, RoutedEventArgs e)
     {
         UsersWindow window = new(_currentUser.Username);

@@ -305,6 +305,42 @@ public class DataConcentrator
         }
     }
 
+    // Search the AI value history. Any argument left null is simply ignored
+    // (not applied), so blank filter fields don't constrain the search.
+    // Returns the matching readings, oldest first.
+    public List<TagValue> FilterTagValues(string? tagName, DateTime? from, DateTime? to,
+        double? minValue, double? maxValue)
+    {
+        using var db = new ScadaDbContext();
+
+        // Start from all readings, then narrow it one condition at a time.
+        // Nothing runs against the database until ToList() at the end.
+        IQueryable<TagValue> query = db.TagValues;
+
+        if (!string.IsNullOrWhiteSpace(tagName))
+        {
+            query = query.Where(v => v.TagName == tagName);
+        }
+        if (from.HasValue)
+        {
+            query = query.Where(v => v.Timestamp >= from.Value);
+        }
+        if (to.HasValue)
+        {
+            query = query.Where(v => v.Timestamp <= to.Value);
+        }
+        if (minValue.HasValue)
+        {
+            query = query.Where(v => v.Value >= minValue.Value);
+        }
+        if (maxValue.HasValue)
+        {
+            query = query.Where(v => v.Value <= maxValue.Value);
+        }
+
+        return query.OrderBy(v => v.Timestamp).ToList();
+    }
+
     // Build a text report of AI readings that were within (low+high)/2 +/- 5.
     public string GenerateReport()
     {
