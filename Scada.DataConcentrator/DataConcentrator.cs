@@ -299,6 +299,48 @@ public class DataConcentrator
         }
     }
 
+    // Build a text report of AI readings that were within (low+high)/2 +/- 5.
+    public string GenerateReport()
+    {
+        // Snapshot the AI tags that have both limits (needed to compute the window).
+        List<Tag> aiTags;
+        lock (_lock)
+        {
+            aiTags = _tags
+                .Where(t => t.Type == TagType.AI && t.LowLimit.HasValue && t.HighLimit.HasValue)
+                .ToList();
+        }
+
+        List<string> lines = new();
+        lines.Add("AI value report - readings within (low + high) / 2 +/- 5");
+        lines.Add($"Generated: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        lines.Add("");
+
+        using var db = new ScadaDbContext();
+
+        foreach (Tag tag in aiTags)
+        {
+            double midpoint = (tag.LowLimit.GetValueOrDefault() + tag.HighLimit.GetValueOrDefault()) / 2.0;
+            double low = midpoint - 5.0;
+            double high = midpoint + 5.0;
+
+            // Query the history table for this tag's readings inside the window.
+            List<TagValue> readings = db.TagValues
+                .Where(v => v.TagName == tag.Name && v.Value >= low && v.Value <= high)
+                .OrderBy(v => v.Timestamp)
+                .ToList();
+
+            lines.Add($"{tag.Name}: midpoint {midpoint:F2} (window {low:F2}..{high:F2}) - {readings.Count} reading(s)");
+            foreach (TagValue r in readings)
+            {
+                lines.Add($"  {r.Timestamp:yyyy-MM-dd HH:mm:ss}  {r.Value:F2} {tag.Units}");
+            }
+            lines.Add("");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
     // Make sure the database exists and has the latest schema. Applies any
     // pending migrations, creating the database file if it is not there yet.
     private void EnsureDatabase()

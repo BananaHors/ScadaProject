@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -89,6 +90,19 @@ public partial class MainWindow : Window
         window.Owner = this;
         window.ShowDialog();
         RefreshGrid();
+    }
+
+    private void ReportButton_Click(object sender, RoutedEventArgs e)
+    {
+        string report = _dc.GenerateReport();
+
+        string path = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+            "scada-report.txt");
+        File.WriteAllText(path, report);
+
+        MessageBox.Show($"Report saved to:\n{path}", "Report",
+            MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void DetailsButton_Click(object sender, RoutedEventArgs e)
