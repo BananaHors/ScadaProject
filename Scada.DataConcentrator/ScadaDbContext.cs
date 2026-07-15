@@ -9,6 +9,7 @@ public class ScadaDbContext : DbContext
     public DbSet<Alarm> Alarms => Set<Alarm>();
     public DbSet<ActivatedAlarm> ActivatedAlarms => Set<ActivatedAlarm>();
     public DbSet<TagValue> TagValues => Set<TagValue>();
+    public DbSet<User> Users => Set<User>();
 
     // Tell EF which database to use and where to find it.
     protected override void OnConfiguring(DbContextOptionsBuilder options)
