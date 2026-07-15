@@ -164,6 +164,8 @@ public class DataConcentrator
                 value = _currentValues[tagName];
             }
 
+            double hysteresis = tag.Hysteresis ?? 0.0;
+
             foreach (Alarm alarm in tag.Alarms)
             {
                 if (alarm.State != AlarmState.Active)
@@ -171,13 +173,13 @@ public class DataConcentrator
                     continue;
                 }
 
-                if (IsInZone(alarm, value))
+                if (HasRecovered(alarm, value, hysteresis))
                 {
-                    alarm.State = AlarmState.Acknowledged; // still bad -> yellow
+                    alarm.State = AlarmState.Inactive; // latched but recovered -> clear
                 }
                 else
                 {
-                    alarm.State = AlarmState.Inactive; // latched but recovered -> clear
+                    alarm.State = AlarmState.Acknowledged; // still in trouble -> yellow
                 }
 
                 acknowledged++;
@@ -208,6 +210,10 @@ public class DataConcentrator
             else if (tag.Type != TagType.DO && tag.Type != TagType.AO)
             {
                 errors.Add("Only output tags (DO/AO) can be written.");
+            }
+            else if (tag.Type == TagType.DO && value != 0 && value != 1)
+            {
+                errors.Add("A digital output (DO) can only be 0 or 1.");
             }
             else
             {
@@ -347,7 +353,16 @@ public class DataConcentrator
                     double newValue = _plc.Read(tag.IoAddress);
                     bool isNew = !_currentValues.ContainsKey(tag.Name);
 
-                    if (isNew || _currentValues[tag.Name] != newValue)
+                    // Deadband: only react if the value moved by MORE than the
+                    // tag's deadband (filters out meaningless sensor jitter).
+                    // A null deadband means 0 - i.e. react to any change.
+                    // Note: the "isNew ||" short-circuits, so we never read the
+                    // missing dictionary entry on the very first scan.
+                    double deadband = tag.Deadband ?? 0.0;
+                    bool changedEnough = isNew ||
+                        Math.Abs(newValue - _currentValues[tag.Name]) > deadband;
+
+                    if (changedEnough)
                     {
                         _currentValues[tag.Name] = newValue;
                         changed.Add(tag.Name);
@@ -390,20 +405,22 @@ public class DataConcentrator
             return;
         }
 
+        double hysteresis = tag.Hysteresis ?? 0.0;
+
         foreach (Alarm alarm in tag.Alarms)
         {
             bool inZone = IsInZone(alarm, value);
 
             if (alarm.State == AlarmState.Inactive && inZone)
             {
-                // Just entered the alarm zone: raise it.
+                // Just entered the alarm zone: raise it (turns ON at the threshold).
                 alarm.State = AlarmState.Active;
                 raised.Add((tag.Name, alarm));
                 logs.Add((LogLevel.Error, $"Alarm active on '{tag.Name}': {alarm.Message}"));
             }
-            else if (alarm.State == AlarmState.Acknowledged && !inZone)
+            else if (alarm.State == AlarmState.Acknowledged && HasRecovered(alarm, value, hysteresis))
             {
-                // An acknowledged alarm whose value returned to normal: clear it.
+                // Acknowledged AND recovered past the hysteresis margin: clear it.
                 alarm.State = AlarmState.Inactive;
             }
 
@@ -452,6 +469,7 @@ public class DataConcentrator
     }
 
     // True if the value is past the alarm's threshold in its direction.
+    // Used to turn an alarm ON (entering the zone).
     private bool IsInZone(Alarm alarm, double value)
     {
         if (alarm.Direction == AlarmDirection.Above)
@@ -460,5 +478,18 @@ public class DataConcentrator
         }
 
         return value < alarm.Threshold;
+    }
+
+    // True if the value has recovered past the threshold by the hysteresis
+    // margin. Used to turn an alarm OFF, so it does not chatter at the threshold:
+    // an "Above" alarm clears only once the value drops below (threshold - margin).
+    private bool HasRecovered(Alarm alarm, double value, double hysteresis)
+    {
+        if (alarm.Direction == AlarmDirection.Above)
+        {
+            return value < alarm.Threshold - hysteresis;
+        }
+
+        return value > alarm.Threshold + hysteresis;
     }
 }

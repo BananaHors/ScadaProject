@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -49,13 +50,25 @@ public partial class MainWindow : Window
 
         foreach (Tag tag in _dc.GetTags())
         {
+            // Worst alarm state on this tag drives its row colour.
+            string alarmStatus = "Normal";
+            if (tag.Alarms.Any(a => a.State == AlarmState.Active))
+            {
+                alarmStatus = "Active";
+            }
+            else if (tag.Alarms.Any(a => a.State == AlarmState.Acknowledged))
+            {
+                alarmStatus = "Acknowledged";
+            }
+
             rows.Add(new TagDisplay
             {
                 Name = tag.Name,
                 Type = tag.Type.ToString(),
                 Address = tag.IoAddress.ToString(),
                 Value = _dc.GetCurrentValue(tag.Name).ToString("F2"),
-                Units = tag.Units ?? ""
+                Units = tag.Units ?? "",
+                AlarmStatus = alarmStatus
             });
         }
 
@@ -68,6 +81,14 @@ public partial class MainWindow : Window
         window.Owner = this;
         window.ShowDialog();   // modal: waits here until the Add window is closed
         RefreshGrid();         // refresh in case a tag was added
+    }
+
+    private void WriteButton_Click(object sender, RoutedEventArgs e)
+    {
+        WriteWindow window = new(_dc);
+        window.Owner = this;
+        window.ShowDialog();
+        RefreshGrid();
     }
 
     private void DetailsButton_Click(object sender, RoutedEventArgs e)
@@ -90,4 +111,5 @@ public class TagDisplay
     public string Address { get; set; } = "";
     public string Value { get; set; } = "";
     public string Units { get; set; } = "";
+    public string AlarmStatus { get; set; } = "Normal";
 }

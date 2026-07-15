@@ -15,9 +15,22 @@
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
             <TextBlock Text="Tags" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
             <Button x:Name="AddButton" Content="Add" Width="80" Margin="20,0,0,0" Click="AddButton_Click"/>
+            <Button x:Name="WriteButton" Content="Write" Width="80" Margin="10,0,0,0" Click="WriteButton_Click"/>
         </StackPanel>
 
         <DataGrid x:Name="TagsGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding AlarmStatus}" Value="Active">
+                            <Setter Property="Background" Value="#FF8080"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding AlarmStatus}" Value="Acknowledged">
+                            <Setter Property="Background" Value="#FFE080"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name"    Binding="{Binding Name}"    Width="160"/>
                 <DataGridTextColumn Header="Type"    Binding="{Binding Type}"    Width="70"/>
