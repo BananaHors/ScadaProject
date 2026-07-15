@@ -93,9 +93,40 @@ public partial class MainWindow : Window
             return;
         }
 
-        _dc.AddTag(new Tag { Name = "BUS1_V", Type = TagType.AI, IoAddress = 30001, Units = "kV", OnOffScan = true, LowLimit = 104.5, HighLimit = 115.5 });
-        _dc.AddTag(new Tag { Name = "GRID_FREQ", Type = TagType.AI, IoAddress = 30002, Units = "Hz", OnOffScan = true, LowLimit = 49.5, HighLimit = 50.5 });
-        _dc.AddTag(new Tag { Name = "LINE1_I", Type = TagType.AI, IoAddress = 30003, Units = "A", OnOffScan = true, LowLimit = 0, HighLimit = 630 });
+        // --- Analog inputs (3xxxx) - a hydro power plant unit ---
+        _dc.AddTag(new Tag { Name = "GEN_ACTIVE_POWER",  Type = TagType.AI, IoAddress = 30001, Description = "Generator active power",   Units = "MW",   OnOffScan = true, ScanTime = 1000, LowLimit = 5,    HighLimit = 55 });
+        _dc.AddTag(new Tag { Name = "GEN_REACTIVE_POWER",Type = TagType.AI, IoAddress = 30002, Description = "Generator reactive power", Units = "MVAr", OnOffScan = true, ScanTime = 1000, LowLimit = -25,  HighLimit = 25 });
+        _dc.AddTag(new Tag { Name = "GEN_VOLTAGE",       Type = TagType.AI, IoAddress = 30003, Description = "Generator voltage",        Units = "kV",   OnOffScan = true, ScanTime = 1000, LowLimit = 9.9,  HighLimit = 11.1 });
+        _dc.AddTag(new Tag { Name = "GEN_CURRENT",       Type = TagType.AI, IoAddress = 30004, Description = "Generator current",        Units = "A",    OnOffScan = true, ScanTime = 1000, LowLimit = 0,    HighLimit = 3200 });
+        _dc.AddTag(new Tag { Name = "GRID_FREQUENCY",    Type = TagType.AI, IoAddress = 30005, Description = "Grid frequency",           Units = "Hz",   OnOffScan = true, ScanTime = 1000, LowLimit = 49.5, HighLimit = 50.5, Deadband = 0.02 });
+        _dc.AddTag(new Tag { Name = "TURBINE_SPEED",     Type = TagType.AI, IoAddress = 30006, Description = "Turbine speed",            Units = "RPM",  OnOffScan = true, ScanTime = 1000, LowLimit = 90,   HighLimit = 115 });
+        _dc.AddTag(new Tag { Name = "HEADWATER_LEVEL",   Type = TagType.AI, IoAddress = 30007, Description = "Upstream water level",     Units = "m",    OnOffScan = true, ScanTime = 5000, LowLimit = 295,  HighLimit = 320 });
+        _dc.AddTag(new Tag { Name = "TAILWATER_LEVEL",   Type = TagType.AI, IoAddress = 30008, Description = "Downstream water level",   Units = "m",    OnOffScan = true, ScanTime = 5000, LowLimit = 250,  HighLimit = 262 });
+        _dc.AddTag(new Tag { Name = "WATER_FLOW",        Type = TagType.AI, IoAddress = 30009, Description = "Turbine discharge",        Units = "m3/s", OnOffScan = true, ScanTime = 5000, LowLimit = 20,   HighLimit = 120 });
+        _dc.AddTag(new Tag { Name = "STATOR_TEMP",       Type = TagType.AI, IoAddress = 30010, Description = "Generator stator temp",    Units = "C",    OnOffScan = true, ScanTime = 5000, LowLimit = 20,   HighLimit = 120 });
+        _dc.AddTag(new Tag { Name = "TRAFO_OIL_TEMP",    Type = TagType.AI, IoAddress = 30011, Description = "Transformer oil temp",     Units = "C",    OnOffScan = true, ScanTime = 5000, LowLimit = 20,   HighLimit = 85 });
+
+        // --- Digital inputs (1xxxx) ---
+        _dc.AddTag(new Tag { Name = "GEN_BREAKER_CLOSED", Type = TagType.DI, IoAddress = 10001, Description = "Generator breaker closed", OnOffScan = true, ScanTime = 1000 });
+        _dc.AddTag(new Tag { Name = "TURBINE_RUNNING",    Type = TagType.DI, IoAddress = 10002, Description = "Turbine running",          OnOffScan = true, ScanTime = 1000 });
+        _dc.AddTag(new Tag { Name = "EMERGENCY_STOP",     Type = TagType.DI, IoAddress = 10003, Description = "Emergency stop active",    OnOffScan = true, ScanTime = 1000 });
+        _dc.AddTag(new Tag { Name = "GOVERNOR_FAULT",     Type = TagType.DI, IoAddress = 10004, Description = "Governor fault",           OnOffScan = true, ScanTime = 1000 });
+        _dc.AddTag(new Tag { Name = "COOLING_WATER_OK",   Type = TagType.DI, IoAddress = 10005, Description = "Cooling water flow OK",     OnOffScan = true, ScanTime = 1000 });
+
+        // --- Digital outputs (0xxxx) ---
+        _dc.AddTag(new Tag { Name = "BREAKER_TRIP_CMD",   Type = TagType.DO, IoAddress = 1, Description = "Generator breaker trip command", InitialValue = 0 });
+        _dc.AddTag(new Tag { Name = "START_TURBINE_CMD",  Type = TagType.DO, IoAddress = 2, Description = "Start turbine command",          InitialValue = 0 });
+
+        // --- Analog outputs (4xxxx) ---
+        _dc.AddTag(new Tag { Name = "GATE_SETPOINT",  Type = TagType.AO, IoAddress = 40001, Description = "Wicket gate opening setpoint", Units = "%",  InitialValue = 50 });
+        _dc.AddTag(new Tag { Name = "POWER_SETPOINT", Type = TagType.AO, IoAddress = 40002, Description = "Generator power setpoint",      Units = "MW", InitialValue = 30 });
+
+        // --- A few alarms (frequency ones fire during normal operation) ---
+        _dc.AddAlarm("GRID_FREQUENCY", new Alarm { Threshold = 50.5, Direction = AlarmDirection.Above, Message = "Overfrequency" });
+        _dc.AddAlarm("GRID_FREQUENCY", new Alarm { Threshold = 49.5, Direction = AlarmDirection.Below, Message = "Underfrequency" });
+        _dc.AddAlarm("GEN_VOLTAGE", new Alarm { Threshold = 11.1, Direction = AlarmDirection.Above, Message = "Generator overvoltage" });
+        _dc.AddAlarm("STATOR_TEMP", new Alarm { Threshold = 120, Direction = AlarmDirection.Above, Message = "Stator overtemperature" });
+        _dc.AddAlarm("TURBINE_SPEED", new Alarm { Threshold = 115, Direction = AlarmDirection.Above, Message = "Turbine overspeed" });
     }
 
     private void RefreshGrid()
@@ -170,9 +201,9 @@ public partial class MainWindow : Window
     {
         string report = _dc.GenerateReport();
 
-        string path = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-            "scada-report.txt");
+        // Save into the app's working directory (the project folder when run
+        // via `dotnet run` from the project root).
+        string path = Path.Combine(Directory.GetCurrentDirectory(), "scada-report.txt");
         File.WriteAllText(path, report);
 
         MessageBox.Show($"Report saved to:\n{path}", "Report",

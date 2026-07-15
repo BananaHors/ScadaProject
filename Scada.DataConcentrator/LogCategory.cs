@@ -11,6 +11,7 @@ public enum LogCategory
     Acknowledge = 8,  // acknowledging alarms
     Alarm = 16,       // an alarm became active
     Warning = 32,     // a value approaching a threshold
+    Error = 64,       // exceptions / error conditions
 
-    All = Login | TagChange | Write | Acknowledge | Alarm | Warning
+    All = Login | TagChange | Write | Acknowledge | Alarm | Warning | Error
 }

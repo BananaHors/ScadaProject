@@ -5,58 +5,91 @@ public class Plc
     // The storage: maps an I/O address (a whole number) to its current value.
     private readonly Dictionary<int, double> _values = new();
 
-    // Used to generate the small random changes each simulation step.
+    // The value each analog input drifts back toward, so it oscillates around a
+    // sensible level instead of wandering off in a pure random walk.
+    private readonly Dictionary<int, double> _centers = new();
+
     private readonly Random _random = new();
 
-    // The "key" that guards access to _values. Only one thread may hold it at a time.
+    // Guards _values / _centers. Only one thread may hold it at a time.
     private readonly object _lock = new();
 
-    // The constructor: runs when someone does "new Plc()".
-    // Here we seed realistic starting values for our substation.
     public Plc()
     {
-        // Analog inputs live in the Modbus input-register range (3xxxx).
-        _values[30001] = 110.0; // bus voltage (kV)
-        _values[30002] = 50.0;  // grid frequency (Hz)
-        _values[30003] = 200.0; // line current (A)
-        _values[30006] = 65.0;  // transformer oil temperature (Celsius)
+        // Seed the substation analog inputs (Modbus input registers, 3xxxx).
+        SetAnalog(30001, 110.0); // bus voltage (kV)
+        SetAnalog(30002, 50.0);  // grid frequency (Hz)
+        SetAnalog(30003, 200.0); // line current (A)
+        SetAnalog(30006, 65.0);  // transformer oil temperature (Celsius)
 
-        // Kick off the background simulation so the values start moving.
         StartSimulation();
     }
 
-    // Launch a background thread that keeps nudging the values over time.
+    // Set an analog input's current value AND the level it oscillates around.
+    // The Data Concentrator uses this to start a new AI tag inside its range.
+    public void SetAnalog(int address, double value)
+    {
+        lock (_lock)
+        {
+            _values[address] = value;
+            _centers[address] = value;
+        }
+    }
+
     private void StartSimulation()
     {
         Thread thread = new Thread(SimulationLoop);
-        thread.IsBackground = true; // don't keep the app alive just for this thread
+        thread.IsBackground = true;
         thread.Start();
     }
 
-    // Runs forever on the background thread: update, wait one second, repeat.
     private void SimulationLoop()
     {
         while (true)
         {
-            SimulateStep();
-            Thread.Sleep(1000); // 1000 milliseconds = 1 second
+            try
+            {
+                SimulateStep();
+            }
+            catch
+            {
+                // A simulation hiccup must not take down this background thread.
+            }
+
+            Thread.Sleep(1000);
         }
     }
 
-    // Nudge every stored value by a small random amount.
+    // Move each analog input a little: pull it gently back toward its center,
+    // plus a small random wobble. This keeps values fluctuating but bounded.
     private void SimulateStep()
     {
         lock (_lock)
         {
             foreach (int address in _values.Keys.ToList())
             {
-                // Only simulate analog inputs (input registers, 3xxxx). Outputs
-                // (4xxxx/0xxxx) hold whatever was written; digital inputs stay put.
                 if (address >= 30001 && address <= 39999)
                 {
-                    double change = _random.NextDouble() - 0.5; // between -0.5 and +0.5
-                    _values[address] = _values[address] + change;
+                    // Analog input: drift gently back toward its center + a wobble.
+                    double center = _values[address];
+                    if (_centers.TryGetValue(address, out double c))
+                    {
+                        center = c;
+                    }
+
+                    double pull = (center - _values[address]) * 0.15;
+                    double wobble = _random.NextDouble() - 0.5; // between -0.5 and +0.5
+                    _values[address] = _values[address] + pull + wobble;
                 }
+                else if (address >= 10001 && address <= 19999)
+                {
+                    // Digital input: occasionally flip between 0 and 1 (~10%/tick).
+                    if (_random.NextDouble() < 0.1)
+                    {
+                        _values[address] = _values[address] == 0.0 ? 1.0 : 0.0;
+                    }
+                }
+                // Outputs (0xxxx / 4xxxx) hold whatever was written.
             }
         }
     }
@@ -70,14 +103,18 @@ public class Plc
             {
                 // Lazily bring a new analog-input address (3xxxx) to life so any
                 // AI tag mapped to it shows moving data instead of a frozen 0.
-                // The simulation loop then nudges it like the seeded ones.
                 if (address >= 30001 && address <= 39999)
                 {
                     _values[address] = 100.0;
+                    _centers[address] = 100.0;
+                }
+                else if (address >= 10001 && address <= 19999)
+                {
+                    _values[address] = 0.0; // digital input starts OFF; simulation toggles it
                 }
                 else
                 {
-                    return 0.0; // outputs/digital inputs read 0 until written
+                    return 0.0; // outputs read 0 until written
                 }
             }
 
@@ -85,7 +122,7 @@ public class Plc
         }
     }
 
-    // Write (store) a value at an address.
+    // Write (store) a value at an address (used for outputs).
     public void Write(int address, double value)
     {
         lock (_lock)

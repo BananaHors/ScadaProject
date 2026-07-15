@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using Scada.DataConcentrator;
@@ -24,6 +25,24 @@ public partial class App : Application
 
         // One concentrator for the whole app life - reused across logins.
         var dc = new Scada.DataConcentrator.DataConcentrator(new FileLogger("system.log"));
+
+        // Never hard-crash on an unhandled UI-thread exception: log it, show it,
+        // and keep running.
+        DispatcherUnhandledException += (sender, args) =>
+        {
+            dc.Log(LogLevel.Error, LogCategory.Error, $"UI error: {args.Exception.Message}");
+            MessageBox.Show($"An unexpected error occurred:\n\n{args.Exception.Message}",
+                "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            args.Handled = true;
+        };
+
+        // Best-effort logging for errors on any other thread.
+        AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+        {
+            Exception? ex = args.ExceptionObject as Exception;
+            try { dc.Log(LogLevel.Error, LogCategory.Error, $"Fatal error: {ex?.Message}"); }
+            catch { }
+        };
 
         // Loop: log in -> use the app -> (log out -> log in again) or quit.
         while (true)

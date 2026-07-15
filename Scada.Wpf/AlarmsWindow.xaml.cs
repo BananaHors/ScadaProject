@@ -59,4 +59,17 @@ public partial class AlarmsWindow : Window
         _dc.AcknowledgeAlarm(alarm.Id);
         Refresh();
     }
+
+    private void RemoveAlarmButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_canWrite)
+        {
+            return; // read-only users cannot remove alarms
+        }
+
+        Button button = (Button)sender;
+        AlarmSnapshot alarm = (AlarmSnapshot)button.DataContext;
+        _dc.RemoveAlarm(alarm.Id);
+        Refresh();
+    }
 }

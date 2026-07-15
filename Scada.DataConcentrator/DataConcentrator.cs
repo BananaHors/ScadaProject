@@ -14,6 +14,10 @@ public class DataConcentrator
     // The latest scanned value for each tag, keyed by tag name.
     private readonly Dictionary<string, double> _currentValues = new();
 
+    // When each tag was last scanned (Environment.TickCount64 ms), so we can
+    // honor each tag's own scan time. Touched only by the scan thread.
+    private readonly Dictionary<string, long> _lastScanTick = new();
+
     // Guards _tags and _currentValues - the state shared with the scan thread.
     private readonly object _lock = new();
 
@@ -64,6 +68,14 @@ public class DataConcentrator
 
             if (errors.Count == 0)
             {
+                // Seed an AI's simulated value to its range midpoint BEFORE it
+                // becomes visible to the scan thread, so the scan never reads the
+                // generic default value first.
+                if (tag.Type == TagType.AI && tag.LowLimit.HasValue && tag.HighLimit.HasValue)
+                {
+                    _plc.SetAnalog(tag.IoAddress, (tag.LowLimit.Value + tag.HighLimit.Value) / 2.0);
+                }
+
                 _tags.Add(tag);
             }
         }
@@ -72,6 +84,12 @@ public class DataConcentrator
         {
             SaveTag(tag);
             _logger.Log(LogLevel.Info, LogCategory.TagChange, $"Tag '{tag.Name}' added.");
+
+            // Push a configured initial value down to an output tag.
+            if ((tag.Type == TagType.DO || tag.Type == TagType.AO) && tag.InitialValue.HasValue)
+            {
+                WriteToTag(tag.Name, tag.InitialValue.Value);
+            }
         }
 
         return errors;
@@ -94,6 +112,7 @@ public class DataConcentrator
             {
                 _tags.Remove(tag);
                 _currentValues.Remove(name);
+                _lastScanTick.Remove(name);
                 removed = true;
             }
         }
@@ -140,6 +159,44 @@ public class DataConcentrator
         }
 
         return errors;
+    }
+
+    // Remove an alarm (by id) from its tag, in memory and in the database.
+    public void RemoveAlarm(int alarmId)
+    {
+        string? tagName = null;
+
+        lock (_lock)
+        {
+            foreach (Tag tag in _tags)
+            {
+                Alarm? alarm = tag.Alarms.FirstOrDefault(a => a.Id == alarmId);
+                if (alarm != null)
+                {
+                    tag.Alarms.Remove(alarm);
+                    tagName = tag.Name;
+                    break;
+                }
+            }
+        }
+
+        if (tagName == null)
+        {
+            return; // no such alarm
+        }
+
+        // Delete the row from the database.
+        using (var db = new ScadaDbContext())
+        {
+            Alarm? row = db.Alarms.FirstOrDefault(a => a.Id == alarmId);
+            if (row != null)
+            {
+                db.Alarms.Remove(row);
+                db.SaveChanges();
+            }
+        }
+
+        _logger.Log(LogLevel.Info, LogCategory.TagChange, $"Alarm removed from '{tagName}'.");
     }
 
     // Acknowledge all Active alarms on a tag (an operator action). An alarm
@@ -449,6 +506,10 @@ public class DataConcentrator
     {
         using var db = new ScadaDbContext();
         db.Database.Migrate();
+
+        // WAL mode lets readers and the writer work concurrently, which avoids
+        // "database is locked" errors between the scan thread and the UI.
+        db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
     }
 
     // Load all saved tags (and their alarms) from the database into memory.
@@ -461,6 +522,21 @@ public class DataConcentrator
         {
             _tags.Clear();
             _tags.AddRange(saved);
+        }
+
+        // On startup, put each output at its initial value and each analog input
+        // inside its configured range.
+        foreach (Tag tag in saved)
+        {
+            if ((tag.Type == TagType.DO || tag.Type == TagType.AO) && tag.InitialValue.HasValue)
+            {
+                WriteToTag(tag.Name, tag.InitialValue.Value);
+            }
+
+            if (tag.Type == TagType.AI && tag.LowLimit.HasValue && tag.HighLimit.HasValue)
+            {
+                _plc.SetAnalog(tag.IoAddress, (tag.LowLimit.Value + tag.HighLimit.Value) / 2.0);
+            }
         }
     }
 
@@ -532,8 +608,18 @@ public class DataConcentrator
     {
         while (true)
         {
-            ScanOnce();
-            Thread.Sleep(1000);
+            try
+            {
+                ScanOnce();
+            }
+            catch (Exception ex)
+            {
+                // A transient error (e.g. a database hiccup) must never crash the
+                // whole app by taking down this background thread.
+                _logger.Log(LogLevel.Error, LogCategory.Error, $"Scan error: {ex.Message}");
+            }
+
+            Thread.Sleep(250); // base tick; each tag is read at its own scan time
         }
     }
 
@@ -548,36 +634,44 @@ public class DataConcentrator
 
         lock (_lock)
         {
+            long now = Environment.TickCount64;
+
             foreach (Tag tag in _tags)
             {
                 bool isInput = tag.Type == TagType.AI || tag.Type == TagType.DI;
-                bool scanning = tag.OnOffScan == true;
-
-                if (isInput && scanning)
+                if (!isInput || tag.OnOffScan != true)
                 {
-                    double newValue = _plc.Read(tag.IoAddress);
-                    bool isNew = !_currentValues.ContainsKey(tag.Name);
+                    continue;
+                }
 
-                    // Deadband: only react if the value moved by MORE than the
-                    // tag's deadband (filters out meaningless sensor jitter).
-                    // A null deadband means 0 - i.e. react to any change.
-                    // Note: the "isNew ||" short-circuits, so we never read the
-                    // missing dictionary entry on the very first scan.
-                    double deadband = tag.Deadband ?? 0.0;
-                    bool changedEnough = isNew ||
-                        Math.Abs(newValue - _currentValues[tag.Name]) > deadband;
+                // Honor each tag's own scan time (milliseconds; default 1000).
+                long scanTime = tag.ScanTime ?? 1000;
+                if (_lastScanTick.TryGetValue(tag.Name, out long last) && now - last < scanTime)
+                {
+                    continue; // not due to be scanned yet
+                }
+                _lastScanTick[tag.Name] = now;
 
-                    if (changedEnough)
+                double newValue = _plc.Read(tag.IoAddress);
+                bool isNew = !_currentValues.ContainsKey(tag.Name);
+
+                // Deadband: only react if the value moved by MORE than the tag's
+                // deadband. The "isNew ||" short-circuits so we never read a
+                // missing dictionary entry on the very first scan.
+                double deadband = tag.Deadband ?? 0.0;
+                bool changedEnough = isNew ||
+                    Math.Abs(newValue - _currentValues[tag.Name]) > deadband;
+
+                if (changedEnough)
+                {
+                    _currentValues[tag.Name] = newValue;
+                    changed.Add(tag.Name);
+                    CheckAlarms(tag, newValue, raised, logs);
+
+                    // Record AI readings for the history (Report + features #2/#4).
+                    if (tag.Type == TagType.AI)
                     {
-                        _currentValues[tag.Name] = newValue;
-                        changed.Add(tag.Name);
-                        CheckAlarms(tag, newValue, raised, logs);
-
-                        // Record AI readings for the history (Report + features #2/#4).
-                        if (tag.Type == TagType.AI)
-                        {
-                            history.Add((tag.Name, newValue));
-                        }
+                        history.Add((tag.Name, newValue));
                     }
                 }
             }

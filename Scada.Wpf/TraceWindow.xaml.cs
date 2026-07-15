@@ -20,6 +20,7 @@ public partial class TraceWindow : Window
         AckBox.IsChecked = tw.HasFlag(LogCategory.Acknowledge);
         AlarmBox.IsChecked = tw.HasFlag(LogCategory.Alarm);
         WarningBox.IsChecked = tw.HasFlag(LogCategory.Warning);
+        ErrorBox.IsChecked = tw.HasFlag(LogCategory.Error);
         ShowTraceWord(tw);
     }
 
@@ -33,6 +34,7 @@ public partial class TraceWindow : Window
         if (AckBox.IsChecked == true) tw |= LogCategory.Acknowledge;
         if (AlarmBox.IsChecked == true) tw |= LogCategory.Alarm;
         if (WarningBox.IsChecked == true) tw |= LogCategory.Warning;
+        if (ErrorBox.IsChecked == true) tw |= LogCategory.Error;
 
         _dc.SetTraceWord(tw);
         ShowTraceWord(tw);

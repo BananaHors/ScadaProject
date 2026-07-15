@@ -64,9 +64,7 @@ public partial class FilterWindow : Window
             lines.Add($"{v.Timestamp:yyyy-MM-dd HH:mm:ss}  {v.TagName}  {v.Value:F2}");
         }
 
-        string path = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-            "scada-filter.txt");
+        string path = Path.Combine(Directory.GetCurrentDirectory(), "scada-filter.txt");
         File.WriteAllText(path, string.Join(Environment.NewLine, lines));
 
         MessageBox.Show($"Exported {_results.Count} rows to:\n{path}", "Generate TXT",
