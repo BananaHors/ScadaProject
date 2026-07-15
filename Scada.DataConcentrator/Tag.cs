@@ -55,6 +55,22 @@ public class Tag
             errors.Add("Low limit must be less than high limit.");
         }
 
+        // The I/O address must sit in the Modbus range for its type.
+        bool addressInRange = Type switch
+        {
+            TagType.DO => IoAddress >= 1 && IoAddress <= 9999,
+            TagType.DI => IoAddress >= 10001 && IoAddress <= 19999,
+            TagType.AI => IoAddress >= 30001 && IoAddress <= 39999,
+            TagType.AO => IoAddress >= 40001 && IoAddress <= 49999,
+            _ => true
+        };
+
+        if (!addressInRange)
+        {
+            errors.Add($"I/O address {IoAddress} is out of range for a {Type} tag " +
+                       "(DO 1-9999, DI 10001-19999, AI 30001-39999, AO 40001-49999).");
+        }
+
         return errors;
     }
 }
