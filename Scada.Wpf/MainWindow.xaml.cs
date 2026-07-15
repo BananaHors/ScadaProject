@@ -145,7 +145,7 @@ public partial class MainWindow : Window
 
     private void UsersButton_Click(object sender, RoutedEventArgs e)
     {
-        UsersWindow window = new();
+        UsersWindow window = new(_currentUser.Username);
         window.Owner = this;
         window.ShowDialog();
     }

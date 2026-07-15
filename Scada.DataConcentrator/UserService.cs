@@ -68,6 +68,39 @@ public class UserService
         return null;
     }
 
+    // List all accounts (for the admin's Users window).
+    public List<User> GetUsers()
+    {
+        using var db = new ScadaDbContext();
+        return db.Users.OrderBy(u => u.Username).ToList();
+    }
+
+    // Delete a user. Empty list = success; otherwise the reason it was refused.
+    public List<string> DeleteUser(string username)
+    {
+        List<string> errors = new();
+
+        using var db = new ScadaDbContext();
+        User? user = db.Users.FirstOrDefault(u => u.Username == username);
+
+        if (user == null)
+        {
+            errors.Add($"No user named '{username}'.");
+            return errors;
+        }
+
+        // Never delete the last admin - that would lock everyone out of admin.
+        if (user.Role == UserRole.Admin && db.Users.Count(u => u.Role == UserRole.Admin) <= 1)
+        {
+            errors.Add("Cannot delete the last admin account.");
+            return errors;
+        }
+
+        db.Users.Remove(user);
+        db.SaveChanges();
+        return errors;
+    }
+
     // The assignment's password rules.
     public List<string> ValidatePassword(string password)
     {
