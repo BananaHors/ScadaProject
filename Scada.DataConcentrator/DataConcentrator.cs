@@ -357,6 +357,24 @@ public class DataConcentrator
         db.SaveChanges();
     }
 
+    // Save a batch of recorded AI readings to the history table.
+    private void SaveTagValues(List<(string TagName, double Value)> values)
+    {
+        using var db = new ScadaDbContext();
+
+        foreach (var v in values)
+        {
+            db.TagValues.Add(new TagValue
+            {
+                TagName = v.TagName,
+                Value = v.Value,
+                Timestamp = DateTime.Now
+            });
+        }
+
+        db.SaveChanges();
+    }
+
     // Launch a background thread that keeps scanning input tags.
     private void StartScanning()
     {
@@ -382,6 +400,7 @@ public class DataConcentrator
         List<string> changed = new();
         List<(string TagName, Alarm Alarm)> raised = new();
         List<(LogLevel Level, string Message)> logs = new();
+        List<(string TagName, double Value)> history = new();
 
         lock (_lock)
         {
@@ -409,6 +428,12 @@ public class DataConcentrator
                         _currentValues[tag.Name] = newValue;
                         changed.Add(tag.Name);
                         CheckAlarms(tag, newValue, raised, logs);
+
+                        // Record AI readings for the history (Report + features #2/#4).
+                        if (tag.Type == TagType.AI)
+                        {
+                            history.Add((tag.Name, newValue));
+                        }
                     }
                 }
             }
@@ -431,6 +456,12 @@ public class DataConcentrator
         foreach (var entry in logs)
         {
             _logger.Log(entry.Level, entry.Message);
+        }
+
+        // Save the recorded AI readings to the history table.
+        if (history.Count > 0)
+        {
+            SaveTagValues(history);
         }
     }
 
