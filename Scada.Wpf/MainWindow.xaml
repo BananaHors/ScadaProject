@@ -18,7 +18,9 @@
             <Button x:Name="WriteButton" Content="Write" Width="80" Margin="10,0,0,0" Click="WriteButton_Click"/>
             <Button x:Name="ReportButton" Content="Report" Width="80" Margin="10,0,0,0" Click="ReportButton_Click"/>
             <Button x:Name="FilterButton" Content="Filter" Width="80" Margin="10,0,0,0" Click="FilterButton_Click"/>
+            <Button x:Name="HistoryButton" Content="History" Width="80" Margin="10,0,0,0" Click="HistoryButton_Click"/>
             <Button x:Name="UsersButton" Content="Users" Width="80" Margin="10,0,0,0" Click="UsersButton_Click"/>
+            <Button x:Name="LogsButton" Content="Logs" Width="80" Margin="10,0,0,0" Click="LogsButton_Click"/>
             <Button x:Name="LogoutButton" Content="Logout" Width="80" Margin="10,0,0,0" Click="LogoutButton_Click"/>
         </StackPanel>
 

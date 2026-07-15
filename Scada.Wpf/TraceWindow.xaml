@@ -1,0 +1,23 @@
+<Window x:Class="Scada.Wpf.TraceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Log settings (trace bits)" Height="380" Width="380"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="20">
+        <TextBlock Text="Which events to write to system.log" FontWeight="Bold" Margin="0,0,0,10"/>
+
+        <CheckBox x:Name="LoginBox"     Content="Login / logout" Margin="0,4"/>
+        <CheckBox x:Name="TagChangeBox" Content="Tag changes (add / remove / alarm)" Margin="0,4"/>
+        <CheckBox x:Name="WriteBox"     Content="Writing values to outputs" Margin="0,4"/>
+        <CheckBox x:Name="AckBox"       Content="Acknowledging alarms" Margin="0,4"/>
+        <CheckBox x:Name="AlarmBox"     Content="Alarm activations" Margin="0,4"/>
+        <CheckBox x:Name="WarningBox"   Content="Approaching-threshold warnings" Margin="0,4"/>
+
+        <TextBlock x:Name="TraceWordText" Foreground="Gray" Margin="0,12,0,12"/>
+
+        <StackPanel Orientation="Horizontal">
+            <Button Content="Save" Width="90" Click="SaveButton_Click"/>
+            <Button Content="Close" Width="90" Margin="10,0,0,0" Click="CloseButton_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

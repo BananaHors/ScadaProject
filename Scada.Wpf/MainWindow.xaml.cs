@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         {
             AddButton.IsEnabled = false;
             UsersButton.Visibility = Visibility.Collapsed;
+            LogsButton.Visibility = Visibility.Collapsed;
         }
 
         SeedSampleTagsIfEmpty();
@@ -150,9 +151,23 @@ public partial class MainWindow : Window
         window.ShowDialog();
     }
 
+    private void HistoryButton_Click(object sender, RoutedEventArgs e)
+    {
+        HistoryWindow window = new(_dc);
+        window.Owner = this;
+        window.ShowDialog();
+    }
+
     private void UsersButton_Click(object sender, RoutedEventArgs e)
     {
         UsersWindow window = new(_currentUser.Username);
+        window.Owner = this;
+        window.ShowDialog();
+    }
+
+    private void LogsButton_Click(object sender, RoutedEventArgs e)
+    {
+        TraceWindow window = new(_dc);
         window.Owner = this;
         window.ShowDialog();
     }

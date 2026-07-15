@@ -38,12 +38,12 @@ public partial class App : Application
             }
 
             User user = login.AuthenticatedUser;
-            dc.Log(LogLevel.Info, $"User '{user.Username}' ({user.Role}) logged in.");
+            dc.Log(LogLevel.Info, LogCategory.Login, $"User '{user.Username}' ({user.Role}) logged in.");
 
             MainWindow main = new(dc, user);
             main.ShowDialog(); // modal: blocks until the main window closes
 
-            dc.Log(LogLevel.Info, $"User '{user.Username}' logged out.");
+            dc.Log(LogLevel.Info, LogCategory.Login, $"User '{user.Username}' logged out.");
 
             if (!main.LogoutRequested)
             {

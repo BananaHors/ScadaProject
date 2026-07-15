@@ -4,6 +4,10 @@
     <ProjectReference Include="..\Scada.DataConcentrator\Scada.DataConcentrator.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="ScottPlot.WPF" Version="5.1.59" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>

@@ -71,7 +71,7 @@ public class DataConcentrator
         if (errors.Count == 0)
         {
             SaveTag(tag);
-            _logger.Log(LogLevel.Info, $"Tag '{tag.Name}' added.");
+            _logger.Log(LogLevel.Info, LogCategory.TagChange, $"Tag '{tag.Name}' added.");
         }
 
         return errors;
@@ -101,7 +101,7 @@ public class DataConcentrator
         if (removed)
         {
             DeleteTag(name);
-            _logger.Log(LogLevel.Info, $"Tag '{name}' removed.");
+            _logger.Log(LogLevel.Info, LogCategory.TagChange, $"Tag '{name}' removed.");
         }
 
         return removed;
@@ -136,7 +136,7 @@ public class DataConcentrator
         if (errors.Count == 0 && target != null)
         {
             SaveTag(target);
-            _logger.Log(LogLevel.Info, $"Alarm added to '{tagName}'.");
+            _logger.Log(LogLevel.Info, LogCategory.TagChange, $"Alarm added to '{tagName}'.");
         }
 
         return errors;
@@ -177,7 +177,7 @@ public class DataConcentrator
 
         if (acknowledged > 0)
         {
-            _logger.Log(LogLevel.Info, $"Acknowledged {acknowledged} alarm(s) on '{tagName}'.");
+            _logger.Log(LogLevel.Info, LogCategory.Acknowledge, $"Acknowledged {acknowledged} alarm(s) on '{tagName}'.");
         }
     }
 
@@ -209,7 +209,7 @@ public class DataConcentrator
 
         if (acked)
         {
-            _logger.Log(LogLevel.Info, $"Acknowledged an alarm on '{tagName}'.");
+            _logger.Log(LogLevel.Info, LogCategory.Acknowledge, $"Acknowledged an alarm on '{tagName}'.");
         }
     }
 
@@ -269,7 +269,7 @@ public class DataConcentrator
         if (written)
         {
             ValueChanged?.Invoke(tagName, value);
-            _logger.Log(LogLevel.Info, $"Wrote {value:F2} to '{tagName}'.");
+            _logger.Log(LogLevel.Info, LogCategory.Write, $"Wrote {value:F2} to '{tagName}'.");
         }
 
         return errors;
@@ -291,9 +291,20 @@ public class DataConcentrator
     }
 
     // Write a message to the log (used by the UI for login/logout events).
-    public void Log(LogLevel level, string message)
+    public void Log(LogLevel level, LogCategory category, string message)
     {
-        _logger.Log(level, message);
+        _logger.Log(level, category, message);
+    }
+
+    // Read/change which log categories are written (the traceword).
+    public LogCategory GetTraceWord()
+    {
+        return _logger.TraceWord;
+    }
+
+    public void SetTraceWord(LogCategory value)
+    {
+        _logger.TraceWord = value;
     }
 
     // Get a snapshot copy of all tags currently in the system.
@@ -483,7 +494,7 @@ public class DataConcentrator
     {
         List<string> changed = new();
         List<(string TagName, Alarm Alarm)> raised = new();
-        List<(LogLevel Level, string Message)> logs = new();
+        List<(LogLevel Level, LogCategory Category, string Message)> logs = new();
         List<(string TagName, double Value)> history = new();
 
         lock (_lock)
@@ -539,7 +550,7 @@ public class DataConcentrator
         // Write any alarm/warning log entries (also outside the lock).
         foreach (var entry in logs)
         {
-            _logger.Log(entry.Level, entry.Message);
+            _logger.Log(entry.Level, entry.Category, entry.Message);
         }
 
         // Save the recorded AI readings to the history table.
@@ -555,7 +566,7 @@ public class DataConcentrator
     // NOTE: this runs while _lock is held (called from inside ScanOnce).
     private void CheckAlarms(Tag tag, double value,
         List<(string TagName, Alarm Alarm)> raised,
-        List<(LogLevel Level, string Message)> logs)
+        List<(LogLevel Level, LogCategory Category, string Message)> logs)
     {
         if (tag.Type != TagType.AI)
         {
@@ -573,7 +584,7 @@ public class DataConcentrator
                 // Just entered the alarm zone: raise it (turns ON at the threshold).
                 alarm.State = AlarmState.Active;
                 raised.Add((tag.Name, alarm));
-                logs.Add((LogLevel.Error, $"Alarm active on '{tag.Name}': {alarm.Message}"));
+                logs.Add((LogLevel.Error, LogCategory.Alarm, $"Alarm active on '{tag.Name}': {alarm.Message}"));
             }
             else if (alarm.State == AlarmState.Acknowledged && HasRecovered(alarm, value, hysteresis))
             {
@@ -591,7 +602,7 @@ public class DataConcentrator
     // Log a WARNING once when the value enters an alarm's warning band, and
     // reset when it leaves so a later approach warns again.
     private void UpdateWarning(Tag tag, Alarm alarm, double value, bool inZone,
-        List<(LogLevel Level, string Message)> logs)
+        List<(LogLevel Level, LogCategory Category, string Message)> logs)
     {
         if (alarm.WarningMargin == null)
         {
@@ -603,7 +614,7 @@ public class DataConcentrator
         if (inWarningBand && !alarm.WarningActive)
         {
             alarm.WarningActive = true;
-            logs.Add((LogLevel.Warning, $"'{tag.Name}' approaching threshold: {alarm.Message}"));
+            logs.Add((LogLevel.Warning, LogCategory.Warning, $"'{tag.Name}' approaching threshold: {alarm.Message}"));
         }
         else if (!inWarningBand)
         {
