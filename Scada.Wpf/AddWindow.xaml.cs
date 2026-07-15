@@ -201,7 +201,37 @@ public partial class AddWindow : Window
         }
 
         // Domain validation (name required, limits, duplicate name...) happens here.
-        return _dc.AddTag(tag);
+        List<string> addErrors = _dc.AddTag(tag);
+        if (addErrors.Count > 0)
+        {
+            return addErrors;
+        }
+
+        // Optionally auto-create high/low alarms from the limits (AI only).
+        if (isAi && CreateAlarmsBox.IsChecked == true)
+        {
+            if (tag.HighLimit.HasValue)
+            {
+                _dc.AddAlarm(tag.Name, new Alarm
+                {
+                    Threshold = tag.HighLimit.Value,
+                    Direction = AlarmDirection.Above,
+                    Message = $"{tag.Name} above high limit"
+                });
+            }
+
+            if (tag.LowLimit.HasValue)
+            {
+                _dc.AddAlarm(tag.Name, new Alarm
+                {
+                    Threshold = tag.LowLimit.Value,
+                    Direction = AlarmDirection.Below,
+                    Message = $"{tag.Name} below low limit"
+                });
+            }
+        }
+
+        return addErrors;
     }
 
     private List<string> TryAddAlarm()

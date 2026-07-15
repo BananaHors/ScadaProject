@@ -18,6 +18,13 @@
                 <DataGridTextColumn Header="Threshold" Binding="{Binding Threshold}" Width="90"/>
                 <DataGridTextColumn Header="State"     Binding="{Binding State}"     Width="120"/>
                 <DataGridTextColumn Header="Message"   Binding="{Binding Message}"   Width="*"/>
+                <DataGridTemplateColumn Header="" Width="110">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Acknowledge" Click="AckOneButton_Click" Margin="2"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 

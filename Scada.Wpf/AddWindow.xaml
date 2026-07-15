@@ -64,6 +64,7 @@
                 <TextBox x:Name="DeadbandBox" Margin="0,2,0,8"/>
                 <TextBlock Text="Hysteresis"/>
                 <TextBox x:Name="HysteresisBox" Margin="0,2,0,8"/>
+                <CheckBox x:Name="CreateAlarmsBox" Content="Create high/low alarms from limits" Margin="0,2,0,8"/>
             </StackPanel>
 
             <!-- Alarm only -->

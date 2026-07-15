@@ -168,21 +168,10 @@ public class DataConcentrator
 
             foreach (Alarm alarm in tag.Alarms)
             {
-                if (alarm.State != AlarmState.Active)
+                if (ApplyAcknowledge(alarm, value, hysteresis))
                 {
-                    continue;
+                    acknowledged++;
                 }
-
-                if (HasRecovered(alarm, value, hysteresis))
-                {
-                    alarm.State = AlarmState.Inactive; // latched but recovered -> clear
-                }
-                else
-                {
-                    alarm.State = AlarmState.Acknowledged; // still in trouble -> yellow
-                }
-
-                acknowledged++;
             }
         }
 
@@ -190,6 +179,59 @@ public class DataConcentrator
         {
             _logger.Log(LogLevel.Info, $"Acknowledged {acknowledged} alarm(s) on '{tagName}'.");
         }
+    }
+
+    // Acknowledge a single alarm (an operator action on one alarm, not all).
+    public void AcknowledgeAlarm(Alarm alarm)
+    {
+        string? tagName = null;
+        bool acked = false;
+
+        lock (_lock)
+        {
+            Tag? tag = _tags.FirstOrDefault(t => t.Alarms.Contains(alarm));
+            if (tag == null)
+            {
+                return;
+            }
+
+            tagName = tag.Name;
+
+            double value = 0.0;
+            if (_currentValues.ContainsKey(tag.Name))
+            {
+                value = _currentValues[tag.Name];
+            }
+
+            double hysteresis = tag.Hysteresis ?? 0.0;
+            acked = ApplyAcknowledge(alarm, value, hysteresis);
+        }
+
+        if (acked)
+        {
+            _logger.Log(LogLevel.Info, $"Acknowledged an alarm on '{tagName}'.");
+        }
+    }
+
+    // Apply the acknowledge transition to one Active alarm. Returns true if it
+    // was Active (and so got acknowledged). The caller must hold _lock.
+    private bool ApplyAcknowledge(Alarm alarm, double value, double hysteresis)
+    {
+        if (alarm.State != AlarmState.Active)
+        {
+            return false;
+        }
+
+        if (HasRecovered(alarm, value, hysteresis))
+        {
+            alarm.State = AlarmState.Inactive; // latched but recovered -> clear
+        }
+        else
+        {
+            alarm.State = AlarmState.Acknowledged; // still in trouble -> yellow
+        }
+
+        return true;
     }
 
     // Write a value to an output tag (DO/AO), pushing it down to the PLC.

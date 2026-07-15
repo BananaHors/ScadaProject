@@ -101,6 +101,24 @@ public partial class MainWindow : Window
         window.Owner = this;
         window.ShowDialog();
     }
+
+    private void RemoveButton_Click(object sender, RoutedEventArgs e)
+    {
+        Button button = (Button)sender;
+        TagDisplay row = (TagDisplay)button.DataContext;
+
+        MessageBoxResult result = MessageBox.Show(
+            $"Remove tag '{row.Name}'? This cannot be undone.",
+            "Confirm remove",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Yes)
+        {
+            _dc.RemoveTag(row.Name);
+            RefreshGrid();
+        }
+    }
 }
 
 // A simple row for the grid - just the columns we want to show.

@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using Scada.DataConcentrator;
 
 namespace Scada.Wpf;
@@ -35,7 +36,16 @@ public partial class AlarmsWindow : Window
 
     private void AcknowledgeButton_Click(object sender, RoutedEventArgs e)
     {
-        _dc.Acknowledge(_tagName);
+        _dc.Acknowledge(_tagName);   // acknowledge all active alarms on this tag
+        Refresh();
+    }
+
+    private void AckOneButton_Click(object sender, RoutedEventArgs e)
+    {
+        // The clicked button's DataContext is the Alarm on its row.
+        Button button = (Button)sender;
+        Alarm alarm = (Alarm)button.DataContext;
+        _dc.AcknowledgeAlarm(alarm);
         Refresh();
     }
 }
