@@ -35,9 +35,11 @@
 
             <!-- Input tags only (AI/DI) -->
             <StackPanel x:Name="InputPanel">
-                <TextBlock Text="Scan Time (ms)"/>
-                <TextBox x:Name="ScanTimeBox" Margin="0,2,0,8"/>
                 <CheckBox x:Name="OnOffScanBox" Content="Scanning on" Margin="0,2,0,8"/>
+                <TextBlock Text="Scan Time (ms)"/>
+                <TextBox x:Name="ScanTimeBox"
+                         IsEnabled="{Binding IsChecked, ElementName=OnOffScanBox}"
+                         Margin="0,2,0,8"/>
             </StackPanel>
 
             <!-- Analog tags only (AI/AO) -->

@@ -52,6 +52,7 @@ public partial class MainWindow : Window
             {
                 Name = tag.Name,
                 Type = tag.Type.ToString(),
+                Address = tag.IoAddress.ToString(),
                 Value = _dc.GetCurrentValue(tag.Name).ToString("F2"),
                 Units = tag.Units ?? ""
             });
@@ -74,6 +75,7 @@ public class TagDisplay
 {
     public string Name { get; set; } = "";
     public string Type { get; set; } = "";
+    public string Address { get; set; } = "";
     public string Value { get; set; } = "";
     public string Units { get; set; } = "";
 }

@@ -19,10 +19,11 @@
 
         <DataGrid x:Name="TagsGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Name"  Binding="{Binding Name}"  Width="160"/>
-                <DataGridTextColumn Header="Type"  Binding="{Binding Type}"  Width="70"/>
-                <DataGridTextColumn Header="Value" Binding="{Binding Value}" Width="110"/>
-                <DataGridTextColumn Header="Units" Binding="{Binding Units}" Width="90"/>
+                <DataGridTextColumn Header="Name"    Binding="{Binding Name}"    Width="160"/>
+                <DataGridTextColumn Header="Type"    Binding="{Binding Type}"    Width="70"/>
+                <DataGridTextColumn Header="Address" Binding="{Binding Address}" Width="90"/>
+                <DataGridTextColumn Header="Value"   Binding="{Binding Value}"   Width="110"/>
+                <DataGridTextColumn Header="Units"   Binding="{Binding Units}"   Width="90"/>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>
