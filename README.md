@@ -56,8 +56,8 @@ the core.
   (optional per-alarm margin).
 
 **Database (EF Core + SQLite)**
-- `ScadaDbContext` with three tables: `Tags`, `Alarms`, `ActivatedAlarms`
-  (the permanent alarm journal).
+
+* `ScadaDbContext` with three tables: `Tags`, `Alarms`, `ActivatedAlarms`(the permanent alarm journal).
 - Initial migration generating the schema.
 
 ## Planned extra features (4 chosen)
@@ -79,7 +79,7 @@ the core.
 ## Tech stack
 
 - C# / .NET 10
-- WPF *(planned)*
+* WPF _(planned)_
 - Entity Framework Core 10 + SQLite
 - Git
 
@@ -88,3 +88,5 @@ the core.
 ```
 dotnet build
 ```
+
+​
