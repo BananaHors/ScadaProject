@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Scada.PlcSimulator;
 
 namespace Scada.DataConcentrator;
@@ -22,6 +23,7 @@ public class DataConcentrator
     public DataConcentrator(ILogger logger)
     {
         _logger = logger;
+        EnsureDatabase();
         StartScanning();
     }
 
@@ -228,6 +230,29 @@ public class DataConcentrator
         }
     }
 
+    // Make sure the database exists and has the latest schema. Applies any
+    // pending migrations, creating the database file if it is not there yet.
+    private void EnsureDatabase()
+    {
+        using var db = new ScadaDbContext();
+        db.Database.Migrate();
+    }
+
+    // Write a permanent journal row recording that an alarm fired.
+    private void SaveActivatedAlarm(string tagName, Alarm alarm)
+    {
+        using var db = new ScadaDbContext();
+
+        db.ActivatedAlarms.Add(new ActivatedAlarm
+        {
+            TagName = tagName,
+            Message = alarm.Message,
+            Timestamp = DateTime.Now
+        });
+
+        db.SaveChanges();
+    }
+
     // Launch a background thread that keeps scanning input tags.
     private void StartScanning()
     {
@@ -286,6 +311,7 @@ public class DataConcentrator
         foreach (var item in raised)
         {
             AlarmRaised?.Invoke(item.TagName, item.Alarm);
+            SaveActivatedAlarm(item.TagName, item.Alarm);
         }
 
         // Write any alarm/warning log entries (also outside the lock).

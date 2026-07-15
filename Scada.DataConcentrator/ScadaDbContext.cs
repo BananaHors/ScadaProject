@@ -12,6 +12,13 @@ public class ScadaDbContext : DbContext
     // Tell EF which database to use and where to find it.
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
-        options.UseSqlite("Data Source=scada.db");
+        // Store the database in a stable per-user location, so every part of
+        // the app finds the same file no matter what folder it runs from.
+        string folder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string dir = Path.Combine(folder, "ScadaProject");
+        Directory.CreateDirectory(dir);
+        string dbPath = Path.Combine(dir, "scada.db");
+
+        options.UseSqlite($"Data Source={dbPath}");
     }
 }
