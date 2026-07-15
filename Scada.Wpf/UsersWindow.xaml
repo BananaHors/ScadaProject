@@ -1,0 +1,31 @@
+<Window x:Class="Scada.Wpf.UsersWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Create user" Height="380" Width="360"
+        WindowStartupLocation="CenterOwner">
+    <StackPanel Margin="20">
+        <TextBlock Text="Create user" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+
+        <TextBlock Text="Username"/>
+        <TextBox x:Name="UsernameBox" Margin="0,2,0,10"/>
+
+        <TextBlock Text="Password"/>
+        <PasswordBox x:Name="PasswordBox" Margin="0,2,0,10"/>
+
+        <TextBlock Text="Role"/>
+        <ComboBox x:Name="RoleCombo" Margin="0,2,0,10">
+            <ComboBoxItem Content="Admin"/>
+            <ComboBoxItem Content="Operator"/>
+        </ComboBox>
+
+        <TextBlock Text="Password must be 15+ characters with an uppercase, lowercase, and special character."
+                   FontStyle="Italic" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+        <TextBlock x:Name="ResultText" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+        <StackPanel Orientation="Horizontal">
+            <Button Content="Create" Width="90" Click="CreateButton_Click"/>
+            <Button Content="Close" Width="90" Margin="10,0,0,0" Click="CloseButton_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -15,14 +15,30 @@ public partial class MainWindow : Window
     // write the type fully-qualified here to be unambiguous.
     private readonly Scada.DataConcentrator.DataConcentrator _dc;
     private readonly DispatcherTimer _timer;
+    private readonly DispatcherTimer _inactivityTimer;
+    private readonly User _currentUser;
+    private readonly bool _isAdmin;
 
-    public MainWindow()
+    // True when the window closed because the user logged out (vs. quit the app).
+    public bool LogoutRequested { get; private set; }
+
+    public MainWindow(Scada.DataConcentrator.DataConcentrator dc, User user)
     {
         InitializeComponent();
 
-        // Create the Data Concentrator (with a file logger) and make sure there
-        // are some tags to look at the first time the app runs.
-        _dc = new Scada.DataConcentrator.DataConcentrator(new FileLogger("system.log"));
+        _dc = dc;
+        _currentUser = user;
+        Title = $"SCADA - Substation Monitor   [{user.Username} / {user.Role}]";
+
+        // Admin can configure (add/remove tags, manage users). Operators can
+        // still operate (write values, acknowledge) but not configure.
+        _isAdmin = user.Role == UserRole.Admin;
+        if (!_isAdmin)
+        {
+            AddButton.IsEnabled = false;
+            UsersButton.Visibility = Visibility.Collapsed;
+        }
+
         SeedSampleTagsIfEmpty();
 
         // Refresh the grid once per second so the values stay current on screen.
@@ -30,7 +46,42 @@ public partial class MainWindow : Window
         _timer.Tick += (sender, e) => RefreshGrid();
         _timer.Start();
 
+        // Log out automatically after 5 minutes with no mouse/keyboard activity.
+        _inactivityTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(5) };
+        _inactivityTimer.Tick += (sender, e) => Logout();
+        _inactivityTimer.Start();
+
+        // Any input resets the inactivity countdown.
+        PreviewMouseMove += (sender, e) => ResetInactivity();
+        PreviewMouseDown += (sender, e) => ResetInactivity();
+        PreviewKeyDown += (sender, e) => ResetInactivity();
+
         RefreshGrid();
+    }
+
+    private void LogoutButton_Click(object sender, RoutedEventArgs e)
+    {
+        Logout();
+    }
+
+    private void Logout()
+    {
+        LogoutRequested = true;
+        Close(); // returns control to App, which shows the login screen again
+    }
+
+    private void ResetInactivity()
+    {
+        _inactivityTimer.Stop();
+        _inactivityTimer.Start();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // Stop our timers so they don't keep firing on a closed window.
+        _timer.Stop();
+        _inactivityTimer.Stop();
+        base.OnClosed(e);
     }
 
     private void SeedSampleTagsIfEmpty()
@@ -92,6 +143,13 @@ public partial class MainWindow : Window
         RefreshGrid();
     }
 
+    private void UsersButton_Click(object sender, RoutedEventArgs e)
+    {
+        UsersWindow window = new();
+        window.Owner = this;
+        window.ShowDialog();
+    }
+
     private void ReportButton_Click(object sender, RoutedEventArgs e)
     {
         string report = _dc.GenerateReport();
@@ -118,6 +176,11 @@ public partial class MainWindow : Window
 
     private void RemoveButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!_isAdmin)
+        {
+            return; // only admins can remove tags
+        }
+
         Button button = (Button)sender;
         TagDisplay row = (TagDisplay)button.DataContext;
 

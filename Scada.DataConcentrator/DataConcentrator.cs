@@ -290,6 +290,12 @@ public class DataConcentrator
         }
     }
 
+    // Write a message to the log (used by the UI for login/logout events).
+    public void Log(LogLevel level, string message)
+    {
+        _logger.Log(level, message);
+    }
+
     // Get a snapshot copy of all tags currently in the system.
     public List<Tag> GetTags()
     {

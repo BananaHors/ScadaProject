@@ -1,0 +1,19 @@
+<Window x:Class="Scada.Wpf.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SCADA Login" Height="260" Width="360"
+        WindowStartupLocation="CenterScreen">
+    <StackPanel Margin="20">
+        <TextBlock Text="SCADA Login" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
+
+        <TextBlock Text="Username"/>
+        <TextBox x:Name="UsernameBox" Margin="0,2,0,10"/>
+
+        <TextBlock Text="Password"/>
+        <PasswordBox x:Name="PasswordBox" Margin="0,2,0,10"/>
+
+        <TextBlock x:Name="ErrorText" Foreground="Red" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+        <Button Content="Login" Width="90" HorizontalAlignment="Left" Click="LoginButton_Click"/>
+    </StackPanel>
+</Window>

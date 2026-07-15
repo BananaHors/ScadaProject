@@ -17,6 +17,8 @@
             <Button x:Name="AddButton" Content="Add" Width="80" Margin="20,0,0,0" Click="AddButton_Click"/>
             <Button x:Name="WriteButton" Content="Write" Width="80" Margin="10,0,0,0" Click="WriteButton_Click"/>
             <Button x:Name="ReportButton" Content="Report" Width="80" Margin="10,0,0,0" Click="ReportButton_Click"/>
+            <Button x:Name="UsersButton" Content="Users" Width="80" Margin="10,0,0,0" Click="UsersButton_Click"/>
+            <Button x:Name="LogoutButton" Content="Logout" Width="80" Margin="10,0,0,0" Click="LogoutButton_Click"/>
         </StackPanel>
 
         <DataGrid x:Name="TagsGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True">
