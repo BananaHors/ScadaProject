@@ -39,9 +39,9 @@ public partial class MainWindow : Window
             return;
         }
 
-        _dc.AddTag(new Tag { Name = "BUS1_V", Type = TagType.AI, IoAddress = 40001, Units = "kV", OnOffScan = true, LowLimit = 104.5, HighLimit = 115.5 });
-        _dc.AddTag(new Tag { Name = "GRID_FREQ", Type = TagType.AI, IoAddress = 40002, Units = "Hz", OnOffScan = true, LowLimit = 49.5, HighLimit = 50.5 });
-        _dc.AddTag(new Tag { Name = "LINE1_I", Type = TagType.AI, IoAddress = 40003, Units = "A", OnOffScan = true, LowLimit = 0, HighLimit = 630 });
+        _dc.AddTag(new Tag { Name = "BUS1_V", Type = TagType.AI, IoAddress = 30001, Units = "kV", OnOffScan = true, LowLimit = 104.5, HighLimit = 115.5 });
+        _dc.AddTag(new Tag { Name = "GRID_FREQ", Type = TagType.AI, IoAddress = 30002, Units = "Hz", OnOffScan = true, LowLimit = 49.5, HighLimit = 50.5 });
+        _dc.AddTag(new Tag { Name = "LINE1_I", Type = TagType.AI, IoAddress = 30003, Units = "A", OnOffScan = true, LowLimit = 0, HighLimit = 630 });
     }
 
     private void RefreshGrid()

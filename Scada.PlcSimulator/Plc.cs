@@ -15,11 +15,11 @@ public class Plc
     // Here we seed realistic starting values for our substation.
     public Plc()
     {
-        _values[40001] = 110.0; // BUS1_V       - busbar voltage (kV)
-        _values[40002] = 50.0;  // GRID_FREQ    - grid frequency (Hz)
-        _values[40003] = 200.0; // LINE1_I      - line current (A)
-        _values[40004] = 25.0;  // TRAFO1_P     - active power (MW)
-        _values[40005] = 45.0;  // TRAFO1_OIL_T - transformer oil temperature (Celsius)
+        // Analog inputs live in the Modbus input-register range (3xxxx).
+        _values[30001] = 110.0; // bus voltage (kV)
+        _values[30002] = 50.0;  // grid frequency (Hz)
+        _values[30003] = 200.0; // line current (A)
+        _values[30006] = 65.0;  // transformer oil temperature (Celsius)
 
         // Kick off the background simulation so the values start moving.
         StartSimulation();
@@ -50,8 +50,13 @@ public class Plc
         {
             foreach (int address in _values.Keys.ToList())
             {
-                double change = _random.NextDouble() - 0.5; // a number between -0.5 and +0.5
-                _values[address] = _values[address] + change;
+                // Only simulate analog inputs (input registers, 3xxxx). Outputs
+                // (4xxxx/0xxxx) hold whatever was written; digital inputs stay put.
+                if (address >= 30001 && address <= 39999)
+                {
+                    double change = _random.NextDouble() - 0.5; // between -0.5 and +0.5
+                    _values[address] = _values[address] + change;
+                }
             }
         }
     }
