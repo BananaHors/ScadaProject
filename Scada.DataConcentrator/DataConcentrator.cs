@@ -24,6 +24,7 @@ public class DataConcentrator
     {
         _logger = logger;
         EnsureDatabase();
+        LoadTags();
         StartScanning();
     }
 
@@ -55,6 +56,12 @@ public class DataConcentrator
                 errors.Add($"A tag named '{tag.Name}' already exists.");
             }
 
+            // Each tag must map to its own I/O address.
+            if (_tags.Any(existing => existing.IoAddress == tag.IoAddress))
+            {
+                errors.Add($"I/O address {tag.IoAddress} is already used by another tag.");
+            }
+
             if (errors.Count == 0)
             {
                 _tags.Add(tag);
@@ -63,6 +70,7 @@ public class DataConcentrator
 
         if (errors.Count == 0)
         {
+            SaveTag(tag);
             _logger.Log(LogLevel.Info, $"Tag '{tag.Name}' added.");
         }
 
@@ -92,6 +100,7 @@ public class DataConcentrator
 
         if (removed)
         {
+            DeleteTag(name);
             _logger.Log(LogLevel.Info, $"Tag '{name}' removed.");
         }
 
@@ -103,6 +112,7 @@ public class DataConcentrator
     public List<string> AddAlarm(string tagName, Alarm alarm)
     {
         List<string> errors = new();
+        Tag? target = null;
 
         lock (_lock)
         {
@@ -119,11 +129,13 @@ public class DataConcentrator
             else
             {
                 tag.Alarms.Add(alarm);
+                target = tag;
             }
         }
 
-        if (errors.Count == 0)
+        if (errors.Count == 0 && target != null)
         {
+            SaveTag(target);
             _logger.Log(LogLevel.Info, $"Alarm added to '{tagName}'.");
         }
 
@@ -230,12 +242,56 @@ public class DataConcentrator
         }
     }
 
+    // Get a snapshot copy of all tags currently in the system.
+    public List<Tag> GetTags()
+    {
+        lock (_lock)
+        {
+            return _tags.ToList();
+        }
+    }
+
     // Make sure the database exists and has the latest schema. Applies any
     // pending migrations, creating the database file if it is not there yet.
     private void EnsureDatabase()
     {
         using var db = new ScadaDbContext();
         db.Database.Migrate();
+    }
+
+    // Load all saved tags (and their alarms) from the database into memory.
+    private void LoadTags()
+    {
+        using var db = new ScadaDbContext();
+        List<Tag> saved = db.Tags.Include(tag => tag.Alarms).ToList();
+
+        lock (_lock)
+        {
+            _tags.Clear();
+            _tags.AddRange(saved);
+        }
+    }
+
+    // Insert or update a tag (and its alarms) in the database.
+    private void SaveTag(Tag tag)
+    {
+        using var db = new ScadaDbContext();
+        db.Update(tag);   // Id == 0 -> insert a new row; Id > 0 -> update the existing one
+        db.SaveChanges();
+    }
+
+    // Delete a tag (and its alarms) from the database.
+    private void DeleteTag(string name)
+    {
+        using var db = new ScadaDbContext();
+        Tag? tag = db.Tags.Include(t => t.Alarms).FirstOrDefault(t => t.Name == name);
+
+        if (tag != null)
+        {
+            db.Alarms.RemoveRange(tag.Alarms);
+            db.Tags.Remove(tag);
+            db.SaveChanges();
+        }
     }
 
     // Write a permanent journal row recording that an alarm fired.
