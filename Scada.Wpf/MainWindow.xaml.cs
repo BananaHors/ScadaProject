@@ -30,12 +30,13 @@ public partial class MainWindow : Window
         _currentUser = user;
         Title = $"SCADA - Substation Monitor   [{user.Username} / {user.Role}]";
 
-        // Admin can configure (add/remove tags, manage users). Operators can
-        // still operate (write values, acknowledge) but not configure.
+        // Per the assignment, only Admin gets read/write; every other role is
+        // read-only (can view but not add/remove/write/acknowledge/configure).
         _isAdmin = user.Role == UserRole.Admin;
         if (!_isAdmin)
         {
             AddButton.IsEnabled = false;
+            WriteButton.IsEnabled = false;
             UsersButton.Visibility = Visibility.Collapsed;
             LogsButton.Visibility = Visibility.Collapsed;
         }
@@ -103,16 +104,9 @@ public partial class MainWindow : Window
 
         foreach (Tag tag in _dc.GetTags())
         {
-            // Worst alarm state on this tag drives its row colour.
-            string alarmStatus = "Normal";
-            if (tag.Alarms.Any(a => a.State == AlarmState.Active))
-            {
-                alarmStatus = "Active";
-            }
-            else if (tag.Alarms.Any(a => a.State == AlarmState.Acknowledged))
-            {
-                alarmStatus = "Acknowledged";
-            }
+            // Worst alarm state on this tag drives its row colour (read under
+            // the concentrator's lock, not from the live alarm objects).
+            string alarmStatus = _dc.GetAlarmStatus(tag.Name);
 
             rows.Add(new TagDisplay
             {
@@ -191,7 +185,7 @@ public partial class MainWindow : Window
         Button button = (Button)sender;
         TagDisplay row = (TagDisplay)button.DataContext;
 
-        AlarmsWindow window = new(_dc, row.Name);
+        AlarmsWindow window = new(_dc, row.Name, _isAdmin);
         window.Owner = this;
         window.ShowDialog();
     }

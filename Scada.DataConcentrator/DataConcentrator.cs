@@ -181,30 +181,34 @@ public class DataConcentrator
         }
     }
 
-    // Acknowledge a single alarm (an operator action on one alarm, not all).
-    public void AcknowledgeAlarm(Alarm alarm)
+    // Acknowledge a single alarm by its id (an operator action on one alarm).
+    public void AcknowledgeAlarm(int alarmId)
     {
         string? tagName = null;
         bool acked = false;
 
         lock (_lock)
         {
-            Tag? tag = _tags.FirstOrDefault(t => t.Alarms.Contains(alarm));
-            if (tag == null)
+            foreach (Tag tag in _tags)
             {
-                return;
+                Alarm? alarm = tag.Alarms.FirstOrDefault(a => a.Id == alarmId);
+                if (alarm == null)
+                {
+                    continue;
+                }
+
+                tagName = tag.Name;
+
+                double value = 0.0;
+                if (_currentValues.ContainsKey(tag.Name))
+                {
+                    value = _currentValues[tag.Name];
+                }
+
+                double hysteresis = tag.Hysteresis ?? 0.0;
+                acked = ApplyAcknowledge(alarm, value, hysteresis);
+                break;
             }
-
-            tagName = tag.Name;
-
-            double value = 0.0;
-            if (_currentValues.ContainsKey(tag.Name))
-            {
-                value = _currentValues[tag.Name];
-            }
-
-            double hysteresis = tag.Hysteresis ?? 0.0;
-            acked = ApplyAcknowledge(alarm, value, hysteresis);
         }
 
         if (acked)
@@ -313,6 +317,51 @@ public class DataConcentrator
         lock (_lock)
         {
             return _tags.ToList();
+        }
+    }
+
+    // The worst alarm state on a tag ("Active" > "Acknowledged" > "Normal"),
+    // computed under the lock so the UI never reads live alarm state directly.
+    public string GetAlarmStatus(string tagName)
+    {
+        lock (_lock)
+        {
+            Tag? tag = _tags.FirstOrDefault(t => t.Name == tagName);
+            if (tag == null)
+            {
+                return "Normal";
+            }
+            if (tag.Alarms.Any(a => a.State == AlarmState.Active))
+            {
+                return "Active";
+            }
+            if (tag.Alarms.Any(a => a.State == AlarmState.Acknowledged))
+            {
+                return "Acknowledged";
+            }
+            return "Normal";
+        }
+    }
+
+    // A snapshot copy of a tag's alarms for the UI (taken under the lock).
+    public List<AlarmSnapshot> GetAlarmsSnapshot(string tagName)
+    {
+        lock (_lock)
+        {
+            Tag? tag = _tags.FirstOrDefault(t => t.Name == tagName);
+            if (tag == null)
+            {
+                return new List<AlarmSnapshot>();
+            }
+
+            return tag.Alarms.Select(a => new AlarmSnapshot
+            {
+                Id = a.Id,
+                Direction = a.Direction,
+                Threshold = a.Threshold,
+                Message = a.Message,
+                State = a.State
+            }).ToList();
         }
     }
 

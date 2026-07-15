@@ -1,10 +1,11 @@
 namespace Scada.DataConcentrator;
 
-// The roles a user can have.
-// Admin  - can configure (add/remove tags, manage users) and operate.
-// Operator - can operate (write values, acknowledge alarms) but not configure.
+// The roles a user can have. Per the assignment, only Admin gets read/write;
+// operator, student, and teacher are all read-only.
 public enum UserRole
 {
     Admin,
-    Operator
+    Operator,
+    Student,
+    Teacher
 }

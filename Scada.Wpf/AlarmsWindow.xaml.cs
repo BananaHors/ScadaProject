@@ -9,12 +9,18 @@ public partial class AlarmsWindow : Window
 {
     private readonly Scada.DataConcentrator.DataConcentrator _dc;
     private readonly string _tagName;
+    private readonly bool _canWrite;
 
-    public AlarmsWindow(Scada.DataConcentrator.DataConcentrator dc, string tagName)
+    public AlarmsWindow(Scada.DataConcentrator.DataConcentrator dc, string tagName, bool canWrite)
     {
         InitializeComponent();
         _dc = dc;
         _tagName = tagName;
+        _canWrite = canWrite;
+
+        // Read-only users can view alarms but not acknowledge them.
+        AcknowledgeButton.IsEnabled = canWrite;
+
         Refresh();
     }
 
@@ -30,8 +36,8 @@ public partial class AlarmsWindow : Window
 
         HeaderText.Text = $"Alarms for {tag.Name}  (I/O address {tag.IoAddress})";
 
-        // A fresh list each time so the grid re-reads the current alarm states.
-        AlarmsGrid.ItemsSource = tag.Alarms.ToList();
+        // Snapshots taken under the lock - the UI never touches live alarms.
+        AlarmsGrid.ItemsSource = _dc.GetAlarmsSnapshot(_tagName);
     }
 
     private void AcknowledgeButton_Click(object sender, RoutedEventArgs e)
@@ -42,10 +48,15 @@ public partial class AlarmsWindow : Window
 
     private void AckOneButton_Click(object sender, RoutedEventArgs e)
     {
-        // The clicked button's DataContext is the Alarm on its row.
+        if (!_canWrite)
+        {
+            return; // read-only users cannot acknowledge
+        }
+
+        // The clicked button's DataContext is the AlarmSnapshot on its row.
         Button button = (Button)sender;
-        Alarm alarm = (Alarm)button.DataContext;
-        _dc.AcknowledgeAlarm(alarm);
+        AlarmSnapshot alarm = (AlarmSnapshot)button.DataContext;
+        _dc.AcknowledgeAlarm(alarm.Id);
         Refresh();
     }
 }

@@ -39,6 +39,8 @@
             <ComboBox x:Name="RoleCombo" Margin="0,2,0,8">
                 <ComboBoxItem Content="Admin"/>
                 <ComboBoxItem Content="Operator"/>
+                <ComboBoxItem Content="Student"/>
+                <ComboBoxItem Content="Teacher"/>
             </ComboBox>
 
             <TextBlock Text="Password: 15+ chars with an uppercase, lowercase, and special character."

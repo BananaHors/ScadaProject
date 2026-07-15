@@ -66,12 +66,22 @@ public class Plc
     {
         lock (_lock)
         {
-            if (_values.ContainsKey(address))
+            if (!_values.ContainsKey(address))
             {
-                return _values[address];
+                // Lazily bring a new analog-input address (3xxxx) to life so any
+                // AI tag mapped to it shows moving data instead of a frozen 0.
+                // The simulation loop then nudges it like the seeded ones.
+                if (address >= 30001 && address <= 39999)
+                {
+                    _values[address] = 100.0;
+                }
+                else
+                {
+                    return 0.0; // outputs/digital inputs read 0 until written
+                }
             }
 
-            return 0.0;
+            return _values[address];
         }
     }
 
