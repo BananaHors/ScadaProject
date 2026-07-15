@@ -24,6 +24,13 @@
                 <DataGridTextColumn Header="Address" Binding="{Binding Address}" Width="90"/>
                 <DataGridTextColumn Header="Value"   Binding="{Binding Value}"   Width="110"/>
                 <DataGridTextColumn Header="Units"   Binding="{Binding Units}"   Width="90"/>
+                <DataGridTemplateColumn Header="" Width="90">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="Details" Click="DetailsButton_Click" Margin="2"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
     </Grid>

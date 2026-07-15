@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using Scada.DataConcentrator;
 
@@ -67,6 +68,17 @@ public partial class MainWindow : Window
         window.Owner = this;
         window.ShowDialog();   // modal: waits here until the Add window is closed
         RefreshGrid();         // refresh in case a tag was added
+    }
+
+    private void DetailsButton_Click(object sender, RoutedEventArgs e)
+    {
+        // The clicked button's DataContext is the TagDisplay row it sits in.
+        Button button = (Button)sender;
+        TagDisplay row = (TagDisplay)button.DataContext;
+
+        AlarmsWindow window = new(_dc, row.Name);
+        window.Owner = this;
+        window.ShowDialog();
     }
 }
 
