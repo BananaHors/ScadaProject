@@ -1,0 +1,91 @@
+<Window x:Class="Scada.Wpf.AddWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Add" Height="640" Width="380"
+        WindowStartupLocation="CenterOwner">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="15">
+
+            <TextBlock Text="Type" FontWeight="Bold"/>
+            <ComboBox x:Name="TypeCombo" SelectionChanged="TypeCombo_SelectionChanged" Margin="0,2,0,10">
+                <ComboBoxItem Content="AI"/>
+                <ComboBoxItem Content="AO"/>
+                <ComboBoxItem Content="DI"/>
+                <ComboBoxItem Content="DO"/>
+                <ComboBoxItem Content="Alarm"/>
+            </ComboBox>
+
+            <!-- Common to every tag (AI/AO/DI/DO) -->
+            <StackPanel x:Name="TagCommonPanel">
+                <WrapPanel>
+                    <TextBlock Text="Name"/>
+                    <TextBlock x:Name="NameError" Foreground="Red" Margin="10,0,0,0"/>
+                </WrapPanel>
+                <TextBox x:Name="NameBox" LostFocus="NameBox_LostFocus" Margin="0,2,0,8"/>
+
+                <TextBlock Text="Description"/>
+                <TextBox x:Name="DescriptionBox" Margin="0,2,0,8"/>
+
+                <WrapPanel>
+                    <TextBlock Text="I/O Address"/>
+                    <TextBlock x:Name="AddressError" Foreground="Red" Margin="10,0,0,0"/>
+                </WrapPanel>
+                <TextBox x:Name="AddressBox" LostFocus="AddressBox_LostFocus" Margin="0,2,0,8"/>
+            </StackPanel>
+
+            <!-- Input tags only (AI/DI) -->
+            <StackPanel x:Name="InputPanel">
+                <TextBlock Text="Scan Time (ms)"/>
+                <TextBox x:Name="ScanTimeBox" Margin="0,2,0,8"/>
+                <CheckBox x:Name="OnOffScanBox" Content="Scanning on" Margin="0,2,0,8"/>
+            </StackPanel>
+
+            <!-- Analog tags only (AI/AO) -->
+            <StackPanel x:Name="AnalogPanel">
+                <TextBlock Text="Units"/>
+                <TextBox x:Name="UnitsBox" Margin="0,2,0,8"/>
+                <TextBlock Text="Low Limit"/>
+                <TextBox x:Name="LowLimitBox" Margin="0,2,0,8"/>
+                <TextBlock Text="High Limit"/>
+                <TextBox x:Name="HighLimitBox" Margin="0,2,0,8"/>
+            </StackPanel>
+
+            <!-- Output tags only (AO/DO) -->
+            <StackPanel x:Name="OutputPanel">
+                <TextBlock Text="Initial Value"/>
+                <TextBox x:Name="InitialValueBox" Margin="0,2,0,8"/>
+            </StackPanel>
+
+            <!-- Analog input only (AI) -->
+            <StackPanel x:Name="AiPanel">
+                <TextBlock Text="Deadband"/>
+                <TextBox x:Name="DeadbandBox" Margin="0,2,0,8"/>
+                <TextBlock Text="Hysteresis"/>
+                <TextBox x:Name="HysteresisBox" Margin="0,2,0,8"/>
+            </StackPanel>
+
+            <!-- Alarm only -->
+            <StackPanel x:Name="AlarmPanel">
+                <TextBlock Text="Target AI Tag"/>
+                <ComboBox x:Name="AlarmTagCombo" Margin="0,2,0,8"/>
+                <TextBlock Text="Threshold"/>
+                <TextBox x:Name="ThresholdBox" Margin="0,2,0,8"/>
+                <TextBlock Text="Direction"/>
+                <ComboBox x:Name="DirectionCombo" Margin="0,2,0,8">
+                    <ComboBoxItem Content="Above"/>
+                    <ComboBoxItem Content="Below"/>
+                </ComboBox>
+                <TextBlock Text="Message"/>
+                <TextBox x:Name="AlarmMessageBox" Margin="0,2,0,8"/>
+            </StackPanel>
+
+            <TextBlock x:Name="ErrorText" Foreground="Red" TextWrapping="Wrap" Margin="0,4,0,4"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                <Button x:Name="AddButton" Content="Add" Width="80" Click="AddButton_Click"/>
+                <Button x:Name="CancelButton" Content="Cancel" Width="80" Margin="10,0,0,0" Click="CancelButton_Click"/>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</Window>
