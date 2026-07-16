@@ -7,7 +7,12 @@ public class FileLogger : ILogger
     private readonly string _filePath;
     private readonly string _traceFilePath;
     private readonly object _lock = new();
-    private LogCategory _traceWord;
+
+    // Read by the background scan thread (in Log) and written by the UI thread
+    // (via TraceWord). 'volatile' guarantees each thread sees the other's latest
+    // write instead of a stale cached copy - without needing to take the lock on
+    // the (hot) logging path.
+    private volatile LogCategory _traceWord;
 
     public FileLogger(string filePath = "system.log")
     {
